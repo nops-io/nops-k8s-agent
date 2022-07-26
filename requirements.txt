@@ -1,6 +1,6 @@
 djangorestframework==3.13.1
 hypercorn==0.13.2
-ujson==4.2.0
+ujson==5.4.0
 dynaconf==3.1.7
 prometheus-api-client==0.5.1
 kubernetes==23.6.0
