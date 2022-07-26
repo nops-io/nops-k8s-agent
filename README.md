@@ -58,6 +58,6 @@ Start the helm chart
       -f /tmp/values.yaml \
       --namespace nops-k8s-agent \
       --set image.repository=ghcr.io/nops-io/nops-k8s-agent \
-      --set image.tag=latest \
+      --set image.tag=deploy \
       --set env_variables.APP_ENV=live \
       --wait --timeout=300s
