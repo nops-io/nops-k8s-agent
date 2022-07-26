@@ -1,0 +1,13 @@
+{{- if $.Values.env_variables }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-configmap
+data:
+{{- range $key, $value := $.Values.env_variables }}
+  {{ if $value }}
+   {{ $key }}: "{{ $value }}"
+   {{end}}
+  {{- end }}
+{{- end }}
+

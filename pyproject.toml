@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 120
+target-version = ['py39']
+
+[tool.isort]
+multi_line_output = 3
+line_length = 120
+force_single_line = true
+default_section = 'THIRDPARTY'
+known_django = 'django'
+sections = 'FUTURE,STDLIB,DJANGO,THIRDPARTY,FIRSTPARTY,LOCALFOLDER'

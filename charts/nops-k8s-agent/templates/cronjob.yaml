@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}
+spec:
+  schedule: "{{ .Values.cronjob.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
+          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          containers:
+          - name: {{ .Chart.Name }}
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy:  {{ .Values.image.pullPolicy }}
+            command: ["/bin/sh"]
+            args: ["/workspace/run_jobs.sh"]
+          restartPolicy: Never

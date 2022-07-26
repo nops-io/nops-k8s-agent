@@ -1,0 +1,4 @@
+access_log_format="%(h)s %(l)s %(l)s '%(r)s' %(s)s %(b)s '%(f)s' '%(a)s' %(L)s"
+#accesslog="-"
+errorlog="-"
+bind="0.0.0.0:80"
