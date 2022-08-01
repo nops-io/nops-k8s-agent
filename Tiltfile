@@ -13,10 +13,11 @@ helm_resource(name="prometheus", chart="prometheus-community/kube-prometheus-sta
 
 # Build repo:
 docker_build(
-    "registry.gitlab.com/nopsteam/nops-k8s-agent",
+    "ghcr.io/nops-io/nops-k8s-agent",
     ".",
     build_args={"debug": "true"},
-    live_update=[sync("./nops_k8s_agent", "/workspace")]
+    live_update=[sync("./nops_k8s_agent", "/workspace")],
+    entrypoint="echo 'WARNING: container is running in dev mode. Entrypoint is overriden in Tiltfile'; sleep 9999999999"
 )
 
 k8s_yaml(helm("./charts/nops-k8s-agent", name=service_name, namespace=namespace, 

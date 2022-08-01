@@ -1,20 +1,24 @@
-import json
 import uuid
 from datetime import datetime
 
 from django.conf import settings
 
 import pandas as pd
+import ujson as json
 from kubernetes import client
 from kubernetes import config
 from loguru import logger
 
 
-def transform(input, non_metric_cols):
+def transform(inp, non_metric_cols):
     x = {}
     y = []
     for col in non_metric_cols:
-        x[col] = input[col]
+        # Check if this is json string change it to object
+        try:
+            x[col] = json.loads(inp[col])
+        except:
+            x[col] = inp[col]
     y.append(x)
     return pd.Series(y)
 
