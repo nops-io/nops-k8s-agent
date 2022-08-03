@@ -1,0 +1,15 @@
+name: Test
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://ghcr.io/nops-io/nops-ci-baseimage:main
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Run Python unit tests
+        run: |
+          make test
