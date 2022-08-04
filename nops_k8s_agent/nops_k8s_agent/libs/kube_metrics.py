@@ -6,7 +6,6 @@ from typing import Any
 from django.conf import settings
 
 import pandas as pd
-import ujson as json
 from jinja2 import Template
 from loguru import logger
 from prometheus_api_client import PrometheusConnect
@@ -26,13 +25,30 @@ metrics_list = {
     "metrics_fmt_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{container!="", container_name!="POD", container!="POD"}[{{ start_time }}])) by (container_name, container, pod_name, pod, namespace, instance,  {{ cluster_id }})',
     "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
     "metrics_fmt_cpu_cores_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
+    "metrics_fmt_daemonset_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="DaemonSet"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',
+    "metrics_fmt_job_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="Job"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',
+    "metrics_fmt_pods_with_replicaset_owner": 'sum(avg_over_time(kube_pod_owner{owner_kind="ReplicaSet"}[{{ start_time }}])) by (pod, owner_name, namespace , {{ cluster_id }})',
+    "metrics_fmt_replicasets_without_owners": 'avg(avg_over_time(kube_replicaset_owner{owner_kind="<none>", owner_name="<none>"}[{{ start_time }}])) by (replicaset, namespace, {{ cluster_id }})',
+    "metrics_fmt_namespace_labels": "avg_over_time(kube_namespace_labels[{{ start_time }}])",
+    "metrics_fmt_namespace_annnotations": "avg_over_time(kube_namespace_annotations[{{ start_time }}])",
+    "metrics_fmt_pod_labels": "avg_over_time(kube_pod_labels[{{ start_time }}])",
+    "metrics_fmt_pod_annotations": "avg_over_time(kube_pod_annotations[{{ start_time }}])",
+    "metrics_fmt_service_labels": "avg_over_time(service_selector_labels[{{ start_time }}])",
+    "metrics_fmt_deployment_labels": "avg_over_time(deployment_match_labels[{{ start_time }}])",
+    "metrics_fmt_statefulset_labels": "avg_over_time(statefulSet_match_labels[{{ start_time }}])",
+    "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
 }
 
 
 class KubeMetrics:
     def __init__(self):
         self.kube = KubeMetadata()
-        self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, disable_ssl=True)
+        if settings.NOPS_K8S_AGENT_PROM_TOKEN:
+            headers = {"Authorization": settings.NOPS_K8S_AGENT_PROM_TOKEN}
+        else:
+            headers = {}
+
+        self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, headers=headers, disable_ssl=True)
 
     def start_time(self) -> datetime:
         start_time = parse_datetime("15m")
@@ -113,7 +129,6 @@ class KubeMetrics:
             non_metric_cols = [col for col in list(df.columns) if col not in ["value", "time"]]
             df[["metrics_metadata"]] = df.apply(lambda x: transform(x, non_metric_cols), axis=1)
             df.drop(columns=non_metric_cols, inplace=True)
-            df["metrics_metadata"] = df["metrics_metadata"].apply(lambda a: json.dumps(a))
             return df
         except Exception as err:
             logger.exception(err)

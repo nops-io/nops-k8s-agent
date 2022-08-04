@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nops-k8s-agent
+  labels:
+    app: nops-k8s-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nops-k8s-agent
+  template:
+    metadata:
+      labels:
+        app: nops-k8s-agent
+    spec:
+      serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+      containers:
+      - name: nops-k8s-agent
+        envFrom:
+        - configMapRef:
+              name: {{ .Chart.Name }}-configmap
+        image: "ghcr.io/nops-io/nops-k8s-agent:master"
+        ports:
+          - name: http
+            containerPort: 80
+            protocol: TCP
