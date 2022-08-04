@@ -11,6 +11,17 @@ helm_repo(name="prometheus-community",url="https://prometheus-community.github.i
 helm_resource(name="prometheus", chart="prometheus-community/kube-prometheus-stack")
 
 
+if os.environ.get('CI'):
+    local_resource(
+        "test-everything",
+        "make test",
+        deps=["./nops-k8s-agent/"],
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        resource_deps=[service_name],
+        allow_parallel=True
+    )
+
+
 # Build repo:
 docker_build(
     "ghcr.io/nops-io/nops-k8s-agent",
@@ -20,6 +31,6 @@ docker_build(
     entrypoint="echo 'WARNING: container is running in dev mode. Entrypoint is overriden in Tiltfile'; sleep 9999999999"
 )
 
-k8s_yaml(helm("./charts/nops-k8s-agent", name=service_name, namespace=namespace, 
-    values=['./charts/nops-k8s-agent/values-local.yaml'],
+k8s_yaml(helm("./charts/nops-k8s-agent-dev", name=service_name, namespace=namespace, 
+    values=['./charts/nops-k8s-agent-dev/values.yaml'],
 ))

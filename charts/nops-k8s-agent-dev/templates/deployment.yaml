@@ -14,16 +14,14 @@ spec:
       labels:
         app: nops-k8s-agent
     spec:
-      serviceAccountName: nops-k8s-agent
+      serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
       containers:
       - name: nops-k8s-agent
         envFrom:
         - configMapRef:
-              name: nops-k8s-agent-configmap
+              name: {{ .Chart.Name }}-configmap
         image: "ghcr.io/nops-io/nops-k8s-agent:master"
         ports:
           - name: http
             containerPort: 80
             protocol: TCP
-
-

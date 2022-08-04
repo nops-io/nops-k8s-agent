@@ -10,6 +10,13 @@ jobs:
       - uses: docker://ghcr.io/nops-io/nops-ci-baseimage:main
       - name: Checkout source
         uses: actions/checkout@v3
-      - name: Run Python unit tests
+      - name: Prepare
         run: |
-          make test
+          curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.23.6/bin/linux/amd64/kubectl
+          kubectl config get-contexts
+          kubectl config set-context --current --namespace=nops-k8s-agent
+          kubectl create namespace nops-k8s-agent || true
+          make ci_infra
+          tilt ci
+        env:
+          CI: True
