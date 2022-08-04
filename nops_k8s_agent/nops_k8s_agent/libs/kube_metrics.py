@@ -6,7 +6,6 @@ from typing import Any
 from django.conf import settings
 
 import pandas as pd
-import ujson as json
 from jinja2 import Template
 from loguru import logger
 from prometheus_api_client import PrometheusConnect
@@ -44,7 +43,12 @@ metrics_list = {
 class KubeMetrics:
     def __init__(self):
         self.kube = KubeMetadata()
-        self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, disable_ssl=True)
+        if settings.NOPS_K8S_AGENT_PROM_TOKEN:
+            headers = {"Authorization": settings.NOPS_K8S_AGENT_PROM_TOKEN}
+        else:
+            headers = {}
+
+        self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, headers=headers, disable_ssl=True)
 
     def start_time(self) -> datetime:
         start_time = parse_datetime("15m")
