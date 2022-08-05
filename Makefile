@@ -7,7 +7,8 @@ dev_infra: infra install_precommit create_namespace
 ci_infra: infra create_namespace
 
 infra:
-	k3d cluster create nops-local --registry-create nops-local-registry:127.0.0.1:5001 --kubeconfig-update-default --kubeconfig-switch-context
+	k3d cluster create nops-local --registry-create nops-local-registry:127.0.0.1:5001 --kubeconfig-update-default --kubeconfig-switch-context --api-port 0.0.0.0:50956
+
 exec:
 	kubectl -n nops-k8s-agent exec -it deploy/nops-k8s-agent -- bash
 shell:
