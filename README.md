@@ -12,7 +12,7 @@ Puts output to kafka topic.
 
 ## Development
 
-Copy ./charts/nops-k8s-agent/values.yaml to ./charts/nops-k8s-agent/local_values.yaml
+Copy ./charts/nops-k8s-agent-dev/values.yaml to ./charts/nops-k8s-agent-dev/local_values.yaml
 
 Enter configuration to local_values.yaml
 
@@ -59,7 +59,7 @@ You can use your own Chart values file or using our example setup_values script 
     # Patch values for env_variables using SSM store.
     python3 deploy/setup_values.py $CI_ENVIRONMENT_SLUG charts/nops-k8s-agent/values.yaml > /tmp/values.yaml
 
-### Deploy Agent
+### Deploy Agent From Source Code
 
 Start the helm chart
 
@@ -72,3 +72,10 @@ Start the helm chart
       --set image.tag=deploy \
       --set env_variables.APP_ENV=live \
       --wait --timeout=300s
+
+
+
+### Deploy Agent via Helm repo
+
+    helm repo add nops-k8s-agent https://nops-io.github.io/nops-k8s-agent
+    helm install -f values.yaml nops-k8s-agent
