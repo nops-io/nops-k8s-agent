@@ -16,16 +16,15 @@ if not os.environ.get('CI'):
         resource_deps=[service_name],
         allow_parallel=True
    )
-
-
-local_resource(
-   "test-everything",
-   "make test",
-   deps=["./nops-k8s-agent/"],
-   trigger_mode=TRIGGER_MODE_MANUAL,
-   resource_deps=[service_name],
-   allow_parallel=True
-)
+else:
+   local_resource(
+        "test-everything",
+        "make test",
+        deps=["./nops-k8s-agent/"],
+        trigger_mode=TRIGGER_MODE_MANUAL,
+        resource_deps=[service_name],
+        allow_parallel=True
+    )
 
 
 # Build repo:
