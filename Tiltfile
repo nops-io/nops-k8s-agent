@@ -11,7 +11,7 @@ if not os.environ.get('CI'):
    local_resource(
        "test-everything-prometheus",
        "make test_prometheus",
-        deps=["./nops-k8s-agent/"],
+        deps=["./nops-k8s-agent/", "prometheus"],
         trigger_mode=TRIGGER_MODE_MANUAL,
         resource_deps=[service_name],
         allow_parallel=True
@@ -36,6 +36,6 @@ docker_build(
     entrypoint="echo 'WARNING: container is running in dev mode. Entrypoint is overriden in Tiltfile'; sleep 9999999999"
 )
 
-k8s_yaml(helm("./charts/nops-k8s-agent-dev", name=service_name, namespace=namespace, 
-    values=['./charts/nops-k8s-agent-dev/values.yaml'],
+k8s_yaml(helm("./charts-dev/nops-k8s-agent-dev", name=service_name, namespace=namespace, 
+    values=['./charts-dev/nops-k8s-agent-dev/values.yaml'],
 ))
