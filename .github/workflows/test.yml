@@ -6,21 +6,28 @@ jobs:
   build:
     name: Test
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/nops-io/nops-ci-baseimage:main
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
-      - name: Prepare CI Infrastructure
-        run: |
-          apt update
-          apt install tmux -y
-          make ci_infra
-      - uses: actions/checkout@v2
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
+      - uses: actions/setup-python@v4
         with:
-          ## limits ssh access and adds the ssh public key for the user which triggered the workflow
-          limit-access-to-actor: true
-          ## limits ssh access and adds the ssh public keys of the listed GitHub users
-          limit-access-to-users: truclk
+          python-version: '3.10'
+      - name: Prepare test 
+        run: |
+          sudo apt-get install -y wget ca-certificates bash curl make sudo git python3-pip rsync openssl && \
+          sudo pip3 install --no-cache-dir awscli boto3 pyyaml requests flake8 && \
+          echo "Installing kubectl" && \
+          sudo wget https://storage.googleapis.com/kubernetes-release/release/v1.23.5/bin/linux/amd64/kubectl && \
+          sudo chmod +x ./kubectl && \
+          sudo mv ./kubectl /usr/local/bin/kubectl && \
+          echo "Installing helm" && \
+          sudo curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && \
+          echo "Installing tilt" && \
+          sudo curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash && \
+          echo "Installing k3d" && \
+          sudo wget -q -O - https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash && \
+          sudo rm -rf /var/lib/apt/lists/*
+          make ci_infra
+      - name: Test
+        run: |
+          tilt ci
