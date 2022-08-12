@@ -100,12 +100,16 @@ class KubeMetrics:
         except Exception as err:
             logger.exception(err)
         finally:
-            final_pd = pd.concat(metrics_result)
-            return final_pd.to_dict(orient="records")
+            if metrics_result:
+                final_pd = pd.concat(metrics_result)
+                return final_pd.to_dict(orient="records")
+            else:
+                return None
 
     def metrics_to_df(self, input_array: dict[Any, Any]):
         try:
             df = pd.json_normalize(input_array)
+            df.fillna("", inplace=True)
             if len(df.columns) == 0:
                 return
             if "values" in list(df.columns):

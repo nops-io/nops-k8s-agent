@@ -32,7 +32,12 @@ docker_build(
     "ghcr.io/nops-io/nops-k8s-agent",
     ".",
     build_args={"debug": "true"},
+    cache_from=[
+        "ghcr.io/nops-io/nops-k8s-agent:master",
+        "ghcr.io/nops-io/nops-k8s-agent:deploy",
+    ],
     live_update=[sync("./nops_k8s_agent", "/workspace")],
+    network="host",
     entrypoint="echo 'WARNING: container is running in dev mode. Entrypoint is overriden in Tiltfile'; sleep 9999999999"
 )
 
