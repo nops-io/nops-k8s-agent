@@ -4,6 +4,7 @@ metadata:
   name: {{ include "nops-k8s-agent.fullname" . }}
   labels:
     {{- include "nops-k8s-agent.labels" . | nindent 4 }}
+automountServiceAccountToken: false
 spec:
   ports:
   - port: 80
