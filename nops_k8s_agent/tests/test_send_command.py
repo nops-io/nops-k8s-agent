@@ -33,3 +33,16 @@ def test_send_metrics(mock_prom_conn):
     mock_prom_conn.return_value = EXAMPLE_RESPONSE
     call_command("send_metrics")
     assert rsp1.call_count
+
+
+@responses.activate
+def test_send_healthcheck():
+    rsp1 = responses.Response(
+        responses.POST,
+        "https://app.nops.io:443/svc/event_collector/v1/kube_collector",
+        status=200,
+    )
+
+    responses.add(rsp1)
+    call_command("send_healthcheck")
+    assert rsp1.call_count
