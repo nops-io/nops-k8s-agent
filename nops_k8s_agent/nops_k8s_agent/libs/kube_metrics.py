@@ -14,6 +14,13 @@ from prometheus_api_client.utils import parse_datetime
 from nops_k8s_agent.libs.commonutils import duration_string
 
 metrics_set = {
+    "pod_metadata": {
+        "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
+        "metrics_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_job_owners": "sum(avg_over_time(kube_job_owner[{{ start_time }}])) by (job_name, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_replicaset_owners": "sum(avg_over_time(kube_replicaset_owner[{{ start_time }}])) by (replicaset, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_replicationcontroller_owners": "sum(avg_over_time(kube_replicationcontroller_owner[{{ start_time }}])) by (replicationcontroller, owner_name, owner_kind, namespace , {{ cluster_id }})",
+    },
     "low": {
         "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
         "metrics_fmt_cpu_cores_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
@@ -27,10 +34,6 @@ metrics_set = {
         "metrics_fmt_deployment_labels": "avg_over_time(deployment_match_labels[{{ start_time }}])",
         "metrics_fmt_statefulset_labels": "avg_over_time(statefulSet_match_labels[{{ start_time }}])",
         "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
-        "metrics_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_job_owners": "sum(avg_over_time(kube_job_owner[{{ start_time }}])) by (job_name, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_replicaset_owners": "sum(avg_over_time(kube_replicaset_owner[{{ start_time }}])) by (replicaset, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_replicationcontroller_owners": "sum(avg_over_time(kube_replicationcontroller_owner[{{ start_time }}])) by (replicationcontroller, owner_name, owner_kind, namespace , {{ cluster_id }})",
     },
     "medium": {
         "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
@@ -106,6 +109,10 @@ class KubeMetrics:
                 "start_time": duration_string((self.end_time() - self.start_time(frequency)).total_seconds()),
                 "end_time": duration_string((self.end_time() - self.start_time(frequency)).total_seconds()),
             }
+            event_type = "k8s_metrics"
+            if frequency == "pod_metadata":
+                event_type = "k8s_pod_metadata"
+
             for key, value in metrics_set[frequency].items():
                 logger.info(f"metrics template:{value}")
                 metrics_query = self.convert_metrics_template(value, input_params=metrics_params)
@@ -117,7 +124,7 @@ class KubeMetrics:
                     result_df["cluster_id"] = self.cluster_id()
                     result_df["event_id"] = str(uuid.uuid4())
                     result_df["cloud"] = "aws"  # TODO SUPPORT MORE CLOUD
-                    result_df["event_type"] = "k8s_metrics"
+                    result_df["event_type"] = event_type
                     result_df["extraction_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     result_df["schema_version"] = settings.SCHEMA_VERSION
                     logger.info(f"metric extraction completed for:{key}")
