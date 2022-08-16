@@ -12,7 +12,6 @@ from prometheus_api_client import PrometheusConnect
 from prometheus_api_client.utils import parse_datetime
 
 from nops_k8s_agent.libs.commonutils import duration_string
-from nops_k8s_agent.libs.kube_metadata import KubeMetadata
 
 metrics_list = {
     "metrics_fmt_pods": "avg(kube_pod_container_status_running{}) by (pod, namespace, {{ cluster_id }})[{{ start_time }}:{{ end_time }}]",
@@ -42,13 +41,22 @@ metrics_list = {
 
 class KubeMetrics:
     def __init__(self):
-        self.kube = KubeMetadata()
         if settings.NOPS_K8S_AGENT_PROM_TOKEN:
             headers = {"Authorization": settings.NOPS_K8S_AGENT_PROM_TOKEN}
         else:
             headers = {}
 
         self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, headers=headers, disable_ssl=True)
+
+    @classmethod
+    def get_status(cls):
+        try:
+            self = cls()
+            assert self.prom_client.get_metric_range_data(metric_name="kube_node_info")
+            status = "Success"
+        except Exception:
+            status = "Failed"
+        return status
 
     def start_time(self) -> datetime:
         start_time = parse_datetime("15m")

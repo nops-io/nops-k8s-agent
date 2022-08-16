@@ -17,6 +17,11 @@ spec:
       serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
       containers:
       - name: nops-k8s-agent
+        env:
+          - name: APP_APP_VERSION
+            value: "{{ .Chart.AppVersion }}"
+          - name: APP_CHART_VERSION
+            value: "{{ .Chart.Version }}"
         envFrom:
         - configMapRef:
               name: {{ .Chart.Name }}-configmap
