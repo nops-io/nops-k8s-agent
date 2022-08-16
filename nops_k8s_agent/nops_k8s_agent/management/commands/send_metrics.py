@@ -16,7 +16,7 @@ class Command(BaseCommand):
             default="high",
             type=str,
             help="Frequency to send low/medium/high",
-            choices=["low", "medium", "high"],
+            choices=["low", "medium", "high", "pod_metadata"],
         )
 
     def handle(self, *args, **options):
