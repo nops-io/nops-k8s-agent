@@ -13,29 +13,41 @@ from prometheus_api_client.utils import parse_datetime
 
 from nops_k8s_agent.libs.commonutils import duration_string
 
+metrics_set = {
+    "low": {
+        "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
+        "metrics_fmt_cpu_cores_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
+        "metrics_fmt_ram_bytes_allocated": 'avg(avg_over_time(kube_pod_container_resource_requests_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
+        "metrics_fmt_cpu_cores_allocated": 'avg(avg_over_time(kube_pod_container_resource_requests_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
+        "metrics_fmt_namespace_labels": "avg_over_time(kube_namespace_labels[{{ start_time }}])",
+        "metrics_fmt_namespace_annnotations": "avg_over_time(kube_namespace_annotations[{{ start_time }}])",
+        "metrics_fmt_pod_labels": "avg_over_time(kube_pod_labels[{{ start_time }}])",
+        "metrics_fmt_pod_annotations": "avg_over_time(kube_pod_annotations[{{ start_time }}])",
+        "metrics_fmt_service_labels": "avg_over_time(service_selector_labels[{{ start_time }}])",
+        "metrics_fmt_deployment_labels": "avg_over_time(deployment_match_labels[{{ start_time }}])",
+        "metrics_fmt_statefulset_labels": "avg_over_time(statefulSet_match_labels[{{ start_time }}])",
+        "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
+        "metrics_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_job_owners": "sum(avg_over_time(kube_job_owner[{{ start_time }}])) by (job_name, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_replicaset_owners": "sum(avg_over_time(kube_replicaset_owner[{{ start_time }}])) by (replicaset, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "metrics_fmt_replicationcontroller_owners": "sum(avg_over_time(kube_replicationcontroller_owner[{{ start_time }}])) by (replicationcontroller, owner_name, owner_kind, namespace , {{ cluster_id }})",
+    },
+    "medium": {
+        "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
+        "metrics_fmt_net_transfer_bytes": 'sum(increase(container_network_transmit_bytes_total{pod!=""}[{{ start_time }}])) by (pod_name, pod, namespace, {{ cluster_id }})',
+        "metrics_fmt_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{container!="", container_name!="POD", container!="POD"}[{{ start_time }}])) by (container_name, container, pod_name, pod, namespace, instance,  {{ cluster_id }})',
+        "metrics_fmt_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{container!="", container_name!="POD", container!="POD"}[{{ start_time }}])) by (container_name, container, pod_name, pod, namespace, instance,  {{ cluster_id }})',
+    },
+    "high": {
+        "metrics_fmt_pods": "avg(kube_pod_container_status_running{}) by (pod, namespace, {{ cluster_id }})[{{ start_time }}:{{ end_time }}]",
+        "metrics_fmt_pods_uid": "avg(kube_pod_container_status_running{}) by (pod, namespace, uid, {{ cluster_id }})[{{ start_time }}:{{ end_time }}]",
+    },
+}
 metrics_list = {
-    "metrics_fmt_pods": "avg(kube_pod_container_status_running{}) by (pod, namespace, {{ cluster_id }})[{{ start_time }}:{{ end_time }}]",
-    "metrics_fmt_pods_uid": "avg(kube_pod_container_status_running{}) by (pod, namespace, uid, {{ cluster_id }})[{{ start_time }}:{{ end_time }}]",
-    "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
-    "metrics_fmt_net_transfer_bytes": 'sum(increase(container_network_transmit_bytes_total{pod!=""}[{{ start_time }}])) by (pod_name, pod, namespace, {{ cluster_id }})',
-    "metrics_fmt_ram_bytes_allocated": 'avg(avg_over_time(kube_pod_container_resource_requests_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
-    "metrics_fmt_cpu_cores_allocated": 'avg(avg_over_time(kube_pod_container_resource_requests_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
-    "metrics_fmt_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{container!="", container_name!="POD", container!="POD"}[{{ start_time }}])) by (container_name, container, pod_name, pod, namespace, instance,  {{ cluster_id }})',
-    "metrics_fmt_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{container!="", container_name!="POD", container!="POD"}[{{ start_time }}])) by (container_name, container, pod_name, pod, namespace, instance,  {{ cluster_id }})',
-    "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
-    "metrics_fmt_cpu_cores_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_cpu_cores{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }})',
-    "metrics_fmt_daemonset_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="DaemonSet"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',
-    "metrics_fmt_job_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="Job"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',
-    "metrics_fmt_pods_with_replicaset_owner": 'sum(avg_over_time(kube_pod_owner{owner_kind="ReplicaSet"}[{{ start_time }}])) by (pod, owner_name, namespace , {{ cluster_id }})',
-    "metrics_fmt_replicasets_without_owners": 'avg(avg_over_time(kube_replicaset_owner{owner_kind="<none>", owner_name="<none>"}[{{ start_time }}])) by (replicaset, namespace, {{ cluster_id }})',
-    "metrics_fmt_namespace_labels": "avg_over_time(kube_namespace_labels[{{ start_time }}])",
-    "metrics_fmt_namespace_annnotations": "avg_over_time(kube_namespace_annotations[{{ start_time }}])",
-    "metrics_fmt_pod_labels": "avg_over_time(kube_pod_labels[{{ start_time }}])",
-    "metrics_fmt_pod_annotations": "avg_over_time(kube_pod_annotations[{{ start_time }}])",
-    "metrics_fmt_service_labels": "avg_over_time(service_selector_labels[{{ start_time }}])",
-    "metrics_fmt_deployment_labels": "avg_over_time(deployment_match_labels[{{ start_time }}])",
-    "metrics_fmt_statefulset_labels": "avg_over_time(statefulSet_match_labels[{{ start_time }}])",
-    "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
+    # "metrics_fmt_daemonset_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="DaemonSet"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',  # DEPRECATED
+    # "metrics_fmt_job_labels": 'sum(avg_over_time(kube_pod_owner{owner_kind="Job"}[{{ start_time }}])) by (pod, owner_name, namespace, {{ cluster_id }})',  # DEPRECATED
+    # "metrics_fmt_pods_with_replicaset_owner": 'sum(avg_over_time(kube_pod_owner{owner_kind="ReplicaSet"}[{{ start_time }}])) by (pod, owner_name, namespace , {{ cluster_id }})',  # DEPRECATED
+    # "metrics_fmt_replicasets_without_owners": 'avg(avg_over_time(kube_replicaset_owner{owner_kind="<none>", owner_name="<none>"}[{{ start_time }}])) by (replicaset, namespace, {{ cluster_id }})',  # DEPRECATED
 }
 
 
@@ -58,8 +70,13 @@ class KubeMetrics:
             status = "Failed"
         return status
 
-    def start_time(self) -> datetime:
-        start_time = parse_datetime("15m")
+    def start_time(self, frequency) -> datetime:
+        if frequency == "low":
+            start_time = parse_datetime("65m")
+        elif frequency == "medium":
+            start_time = parse_datetime("35m")
+        elif frequency == "high":
+            start_time = parse_datetime("15m")
         logger.info(start_time)
         return start_time
 
@@ -81,15 +98,15 @@ class KubeMetrics:
             logger.exception(traceback.format_exc())
             logger.exception(err)
 
-    def get_metrics(self):
+    def get_metrics(self, frequency="high"):
         metrics_result = []
         try:
             metrics_params = {
                 "cluster_id": "instance",
-                "start_time": duration_string((self.end_time() - self.start_time()).total_seconds()),
-                "end_time": duration_string((self.end_time() - self.start_time()).total_seconds()),
+                "start_time": duration_string((self.end_time() - self.start_time(frequency)).total_seconds()),
+                "end_time": duration_string((self.end_time() - self.start_time(frequency)).total_seconds()),
             }
-            for key, value in metrics_list.items():
+            for key, value in metrics_set[frequency].items():
                 logger.info(f"metrics template:{value}")
                 metrics_query = self.convert_metrics_template(value, input_params=metrics_params)
                 logger.info(metrics_query)
