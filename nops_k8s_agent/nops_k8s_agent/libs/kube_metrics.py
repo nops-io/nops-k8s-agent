@@ -74,7 +74,8 @@ class KubeMetrics:
         return status
 
     def start_time(self, frequency) -> datetime:
-        if frequency == "low":
+        start_time = parse_datetime("65m")
+        if frequency == "low" or frequency == "pod_metadata":
             start_time = parse_datetime("65m")
         elif frequency == "medium":
             start_time = parse_datetime("35m")
