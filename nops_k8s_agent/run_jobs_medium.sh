@@ -1,1 +1,1 @@
-/workspace/manage.py send_metrics medium
+/workspace/manage.py send_metrics -f medium

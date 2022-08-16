@@ -1,1 +1,1 @@
-/workspace/manage.py send_metrics low
+/workspace/manage.py send_metrics -f low
