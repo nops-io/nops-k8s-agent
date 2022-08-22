@@ -34,6 +34,8 @@ metrics_set = {
         "metrics_fmt_deployment_labels": "avg_over_time(deployment_match_labels[{{ start_time }}])",
         "metrics_fmt_statefulset_labels": "avg_over_time(statefulSet_match_labels[{{ start_time }}])",
         "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
+        "metrics_fmt_container_info": "avg_over_time(kube_pod_container_info[{{ start_time }}])",
+        "metrics_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace , {{ cluster_id }})",
     },
     "medium": {
         "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
