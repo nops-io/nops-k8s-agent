@@ -15,11 +15,17 @@ from nops_k8s_agent.libs.commonutils import duration_string
 
 metrics_set = {
     "pod_metadata": {
-        "metrics_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
-        "metrics_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_job_owners": "sum(avg_over_time(kube_job_owner[{{ start_time }}])) by (job_name, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_replicaset_owners": "sum(avg_over_time(kube_replicaset_owner[{{ start_time }}])) by (replicaset, owner_name, owner_kind, namespace , {{ cluster_id }})",
-        "metrics_fmt_replicationcontroller_owners": "sum(avg_over_time(kube_replicationcontroller_owner[{{ start_time }}])) by (replicationcontroller, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "pod_metadata_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
+        "pod_metadata_fmt_pod_owners": "sum(avg_over_time(kube_pod_owner[{{ start_time }}])) by (pod, owner_name, owner_kind, namespace, uid, {{ cluster_id }})",
+        "pod_metadata_fmt_job_owners": "sum(avg_over_time(kube_job_owner[{{ start_time }}])) by (job_name, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "pod_metadata_fmt_replicaset_owners": "sum(avg_over_time(kube_replicaset_owner[{{ start_time }}])) by (replicaset, owner_name, owner_kind, namespace , {{ cluster_id }})",
+        "pod_metadata": "sum(avg_over_time(kube_replicationcontroller_owner[{{ start_time }}])) by (replicationcontroller, owner_name, owner_kind, namespace , {{ cluster_id }})",
+    },
+    "node_metrics": {
+        "node_metrics_fmt_node_memory_Buffers_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
+        "node_metrics_fmt_node_memory_Cached_bytes": "avg(avg_over_time(node_memory_Cached_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
+        "node_metrics_fmt_node_memory_MemFree_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
+        "node_metrics_fmt_node_cpu_seconds_total": 'avg(avg_over_time(node_cpu_seconds_total{mode="idle"}[{{ start_time }}])) by (instance, {{ cluster_id }})',
     },
     "low": {
         "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
@@ -81,7 +87,7 @@ class KubeMetrics:
             start_time = parse_datetime("65m")
         elif frequency == "medium":
             start_time = parse_datetime("35m")
-        elif frequency == "high":
+        elif frequency == "high" or frequency == "node_metrics":
             start_time = parse_datetime("15m")
         logger.info(start_time)
         return start_time
@@ -115,6 +121,8 @@ class KubeMetrics:
             event_type = "k8s_metrics"
             if frequency == "pod_metadata":
                 event_type = "k8s_pod_metadata"
+            elif frequency == "node_metrics":
+                event_type = "k8s_node_metrics"
 
             for key, value in metrics_set[frequency].items():
                 logger.info(f"metrics template:{value}")
