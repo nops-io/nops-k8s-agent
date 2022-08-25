@@ -13,6 +13,11 @@ from prometheus_api_client.utils import parse_datetime
 
 from nops_k8s_agent.libs.commonutils import duration_string
 
+# TO Add a new new frequency
+# nops_k8s_agent/nops_k8s_agent/management/commands/send_metrics.py
+# start_time
+# get_metrics
+# Run job
 metrics_set = {
     "pod_metadata": {
         "pod_metadata_fmt_pod_info": "avg_over_time(kube_pod_info[{{ start_time }}])",
