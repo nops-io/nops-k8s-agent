@@ -30,7 +30,7 @@ metrics_set = {
         "node_metrics_fmt_node_memory_Buffers_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
         "node_metrics_fmt_node_memory_Cached_bytes": "avg(avg_over_time(node_memory_Cached_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
         "node_metrics_fmt_node_memory_MemFree_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{{ start_time }}])) by (instance, {{ cluster_id }})",
-        "node_metrics_fmt_node_cpu_seconds_total": 'avg(avg_over_time(node_cpu_seconds_total{mode="idle"}[{{ start_time }}])) by (instance, {{ cluster_id }})',
+        "node_metrics_fmt_node_cpu_seconds_total": 'avg(avg_over_time(node_cpu_seconds_total{mode="idle"}[{{ start_time }}])) by (instance, {{ cluster_id }}, mode, cpu)',
     },
     "low": {
         "metrics_fmt_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{container!="", container!="POD", node!=""}[{{ start_time }}])) by (container, pod, namespace, node, {{ cluster_id }}, provider_id)',
