@@ -1,9 +1,10 @@
+{{ if ne .Values.env_variables.APP_ENV "ci" }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}
+  name: {{ template "nops-k8s-agent.fullname" . }}-low
 spec:
-  schedule: "{{ .Values.cronjob.schedule }}"
+  schedule: "{{ .Values.cronjob.schedule_low }}"
   jobTemplate:
     spec:
       template:
@@ -12,11 +13,77 @@ spec:
           serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
           containers:
           - name: {{ .Chart.Name }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
             command: ["/bin/sh"]
-            args: ["/workspace/run_jobs.sh"]
+            args: ["/workspace/run_jobs_low.sh"]
           restartPolicy: Never
+{{ end }}
+---
+{{ if ne .Values.env_variables.APP_ENV "ci" }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}-medium
+spec:
+  schedule: "{{ .Values.cronjob.schedule_medium }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
+          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          containers:
+          - name: {{ .Chart.Name }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy:  {{ .Values.image.pullPolicy }}
+            command: ["/bin/sh"]
+            args: ["/workspace/run_jobs_medium.sh"]
+          restartPolicy: Never
+{{ end }}
+---
+{{ if ne .Values.env_variables.APP_ENV "ci" }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}-high
+spec:
+  schedule: "{{ .Values.cronjob.schedule_high }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
+          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          containers:
+          - name: {{ .Chart.Name }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy:  {{ .Values.image.pullPolicy }}
+            command: ["/bin/sh"]
+            args: ["/workspace/run_jobs_high.sh"]
+          restartPolicy: Never
+{{ end }}

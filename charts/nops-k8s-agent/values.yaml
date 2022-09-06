@@ -19,6 +19,9 @@ serviceAccount:
 
 cronjob:
   schedule: "*/10 * * * *"
+  schedule_low: "0 * * * *"
+  schedule_medium: "*/30 * * * *"
+  schedule_high: "*/10 * * * *"
 
 env_variables:
   # Required paramters

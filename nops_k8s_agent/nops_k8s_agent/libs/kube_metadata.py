@@ -17,7 +17,7 @@ def transform(inp, non_metric_cols):
         # Check if this is json string change it to object
         try:
             x[col] = json.loads(inp[col])
-        except:
+        except Exception:
             x[col] = inp[col]
     y.append(x)
     return pd.Series(y)
@@ -35,17 +35,17 @@ class KubeMetadata:
                 raise Exception("Could not configure kubernetes python client")
         self.v1 = client.CoreV1Api()
 
-    def get_cluster_name(self):
-        # This is a tricky one we can get it inside from API, so we assume it's first node name
-        resource = self.list_node()
+    @classmethod
+    def get_status(cls):
         try:
-            cluster_name = "-".join(resource["items"][0]["metadata"]["name"].split("-")[:-2])
-            if not cluster_name:
-                cluster_name = resource["items"][0]["metadata"]["name"]
-            return cluster_name
-        except Exception as err:
-            logger.exception(err)
-            return "Not Available"
+            cls()
+            status = "Success"
+        except Exception:
+            status = "Failed"
+        return status
+
+    def cluster_id(self) -> str:
+        return settings.NOPS_K8S_AGENT_CLUSTER_ID
 
     def list_node(self):
         # TODO CACHE HERE
@@ -55,7 +55,7 @@ class KubeMetadata:
     def get_metadata(self):
         resource = self.list_node()
         df = pd.json_normalize(resource["items"])
-        df["cluster_id"] = str(self.get_cluster_name())
+        df["cluster_id"] = str(self.cluster_id())
         df.drop(
             columns=[
                 "status.conditions",
@@ -73,7 +73,7 @@ class KubeMetadata:
         df[["k8s_node_metadata"]] = df.apply(lambda x: transform(x, k8s_node_metadata), axis=1)
         df["extraction_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         df["schema_version"] = settings.SCHEMA_VERSION
-        df["cluster_id"] = self.get_cluster_name()
+        df["cluster_id"] = self.cluster_id()
         df["event_id"] = str(uuid.uuid4())
         df["cloud"] = "aws"  # TODO SUPPORT MORE CLOUD
         df["event_type"] = "k8s_node_metadata"
