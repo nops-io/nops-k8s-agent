@@ -21,7 +21,7 @@ spec:
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
             command: ["/bin/sh"]
             args: ["/workspace/run_jobs_low.sh"]
@@ -51,7 +51,7 @@ spec:
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
             command: ["/bin/sh"]
             args: ["/workspace/run_jobs_medium.sh"]
@@ -81,7 +81,7 @@ spec:
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
             command: ["/bin/sh"]
             args: ["/workspace/run_jobs_high.sh"]

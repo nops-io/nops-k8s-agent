@@ -2,10 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 image:
-  repository: ghcr.io/nops-io/nops-k8s-agent:deploy
+  repository: ghcr.io/nops-io/nops-k8s-agent
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "deploy"
 
 ingress:
   enabled: false
