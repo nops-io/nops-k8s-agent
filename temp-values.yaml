@@ -1,0 +1,25 @@
+cronjob:
+  schedule: '*/10 * * * *'
+env_variables:
+  APP_ENV: live
+  APP_NOPS_K8S_AGENT_CLUSTER_ID: arn:aws:eks:us-west-2:202279780353:cluster/nOps-prod
+  APP_NOPS_K8S_AGENT_TIMEOUT: '120'
+  APP_NOPS_K8S_COLLECTOR_API_KEY: 3378.a36f07ab63da63a56d8427b35c65272a
+  APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER: '202279780353'
+  APP_NOPS_K8S_COLLECTOR_HOST: app.nops.io
+  APP_NOPS_K8S_COLLECTOR_NO_SSL: ''
+  APP_NOPS_K8S_COLLECTOR_PORT: ''
+  APP_NOPS_K8S_COLLECTOR_SKIP_SSL_VALIDATION: ''
+  APP_PROMETHEUS_SERVER_ENDPOINT: http://prometheus-operator-kube-p-prometheus.monitoring.svc.cluster.local:9090
+image:
+  pullPolicy: Always
+  repository: ghcr.io/nops-io/nops-k8s-agent
+  tag: 'deploy'
+ingress:
+  enabled: false
+service:
+  port: 80
+  type: ClusterIP
+serviceAccount:
+  create: false
+
