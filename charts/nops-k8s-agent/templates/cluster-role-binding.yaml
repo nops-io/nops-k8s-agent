@@ -8,5 +8,5 @@ roleRef:
   name: nops-k8s-agent
 subjects:
   - kind: ServiceAccount
-    name: default 
+    name: nops-k8s-agent 
     namespace: nops-k8s-agent
