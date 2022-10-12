@@ -1,0 +1,8 @@
+fileignoreconfig:
+- filename: README.md
+  checksum: 2935beb32be830176139d117548ef2403f13463bfc6b00683ce388965afae8da
+- filename: charts/nops-k8s-agent/templates/cronjob.yaml
+  checksum: a132b8975e48692b6466444a23db162025a79400297e963ce39254a793184bb2
+- filename: temp-values.yaml
+  checksum: d22a24bb4335aa2d21516c2b73224b00f94263cc51aa5a9c454396fd67599587
+version: "1.0"
