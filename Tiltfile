@@ -13,7 +13,7 @@ if not os.environ.get('CI'):
        "make test_prometheus",
         deps=["./nops-k8s-agent/", "prometheus"],
         trigger_mode=TRIGGER_MODE_MANUAL,
-        resource_deps=[service_name],
+        resource_deps=[service_name, "prometheus"],
         allow_parallel=True
    )
 else:
@@ -22,7 +22,7 @@ else:
         "make test",
         deps=["./nops-k8s-agent/"],
         trigger_mode=TRIGGER_MODE_MANUAL,
-        resource_deps=[service_name],
+        resource_deps=[service_name, "prometheus"],
         allow_parallel=True
     )
 
