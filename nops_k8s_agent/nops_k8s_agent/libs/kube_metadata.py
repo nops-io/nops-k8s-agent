@@ -55,6 +55,7 @@ class KubeMetadata:
     def get_metadata(self):
         resource = self.list_node()
         df = pd.json_normalize(resource["items"])
+        df.fillna("", inplace=True)
         df["cluster_id"] = str(self.cluster_id())
         df.drop(
             columns=[
