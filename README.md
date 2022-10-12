@@ -46,7 +46,7 @@ You can use your own Prometheus instance or launching your nops-k8s-agent namesp
     helm install prometheus prometheus-community/kube-prometheus-stack
 
 ### Create Secret
-Create Secret "nops_k8s_agent" with following values in it.
+Create Secret "nops-k8s-agent" with following values in it.
 - nops_api_key - Currently no support signature verification https://docs.nops.io/en/articles/5955764-getting-started-with-the-nops-developer-api
 - aws_account_id - The AWS account number of which is configured within nOps
 
@@ -56,7 +56,7 @@ apiVersion: v1
 kind: Secret
 type: Opaque
 metadata:
-  name: nops_k8s_agent
+  name: nops-k8s-agent
   namespace: <same as nops-k8s-agent installation>
 data:
   nops_api_key: YWRtaW4=
