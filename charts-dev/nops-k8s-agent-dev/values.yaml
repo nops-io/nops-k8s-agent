@@ -15,7 +15,7 @@ service:
   port: 80
 
 serviceAccount:
-  create: false
+  create: true
 
 cronjob:
   schedule_low: "0 * * * *"

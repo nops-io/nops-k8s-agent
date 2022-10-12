@@ -45,14 +45,30 @@ You can use your own Prometheus instance or launching your nops-k8s-agent namesp
     helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     helm install prometheus prometheus-community/kube-prometheus-stack
 
+### Create Secret
+Create Secret "nops_k8s_agent" with following values in it.
+- nops_api_key - Currently no support signature verification https://docs.nops.io/en/articles/5955764-getting-started-with-the-nops-developer-api
+- aws_account_id - The AWS account number of which is configured within nOps
+
+Example Secret Manifest Reference
+```
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: nops_k8s_agent
+  namespace: <same as nops-k8s-agent installation>
+data:
+  nops_api_key: YWRtaW4=
+  aws_account_id: MWYyZDFlMmU2N2Rm
+```
 ### Configure values.yaml
 
 There are required variables:
 
 - APP_PROMETHEUS_SERVER_ENDPOINT - depends on your prometheus stack installation 
 - APP_NOPS_K8S_AGENT_CLUSTER_ID - needs to match with your cluster id 
-- APP_NOPS_K8S_COLLECTOR_API_KEY - Currently no support signature verification https://docs.nops.io/en/articles/5955764-getting-started-with-the-nops-developer-api
-- APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER - The AWS account number of which is configured within nOps
+
 
 You can use your own Chart values file or using our example setup_values script to fetch variable_env from Parameter Store SSM (Not encrypted)
 

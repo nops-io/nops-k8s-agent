@@ -10,7 +10,11 @@ spec:
       template:
         spec:
           activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
-          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          {{ if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
+          {{ else }}
+          serviceAccountName: default
+          {{ end }}
           containers:
           - name: {{ .Chart.Name }}
             env:
@@ -18,6 +22,16 @@ spec:
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
+              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: nops_api_key
+              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: aws_account_id
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
@@ -40,7 +54,11 @@ spec:
       template:
         spec:
           activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
-          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          {{ if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
+          {{ else }}
+          serviceAccountName: default
+          {{ end }}
           containers:
           - name: {{ .Chart.Name }}
             env:
@@ -48,6 +66,16 @@ spec:
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
+              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: nops_api_key
+              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: aws_account_id
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
@@ -70,7 +98,11 @@ spec:
       template:
         spec:
           activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
-          serviceAccountName: {{ include "nops-k8s-agent.serviceAccountName" . }}
+          {{ if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
+          {{ else }}
+          serviceAccountName: default
+          {{ end }}
           containers:
           - name: {{ .Chart.Name }}
             env:
@@ -78,6 +110,16 @@ spec:
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
+              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: nops_api_key
+              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
+                valueFrom:
+                  secretKeyRef:
+                    name: nops_k8s_agent
+                    key: aws_account_id
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
