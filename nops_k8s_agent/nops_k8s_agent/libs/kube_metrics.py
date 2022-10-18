@@ -1,3 +1,4 @@
+import sys
 import traceback
 import uuid
 from datetime import datetime
@@ -73,8 +74,10 @@ class KubeMetrics:
             headers = {"Authorization": settings.NOPS_K8S_AGENT_PROM_TOKEN}
         else:
             headers = {}
-
         self.prom_client = PrometheusConnect(url=settings.PROMETHEUS_SERVER_ENDPOINT, headers=headers, disable_ssl=True)
+        if settings.DEBUG is not True:
+            logger.remove()
+            logger.add(sys.stderr, level="WARNING")
 
     @classmethod
     def get_status(cls):
@@ -146,7 +149,7 @@ class KubeMetrics:
                     logger.info(f"metric extraction completed for:{key}")
                     metrics_result.append(result_df)
         except Exception as err:
-            logger.exception(err)
+            logger.warning(err)
         finally:
             if metrics_result:
                 final_pd = pd.concat(metrics_result)

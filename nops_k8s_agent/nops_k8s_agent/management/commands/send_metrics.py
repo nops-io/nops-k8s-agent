@@ -22,7 +22,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             metrics = KubeMetrics().get_metrics(frequency=options["frequency"])
-            forward_logs(metrics, settings.NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER)
+            if metrics:
+                forward_logs(metrics, settings.NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER)
+            else:
+                self.stdout.write("Got no metrics event")
         except Exception as e:
             raise CommandError(f"Error when getting metrics {str(e)}")
-        self.stdout.write(f"Got {len(metrics)} metrics event")
+        if metrics:
+            self.stdout.write(f"Got {len(metrics)} metrics event")
