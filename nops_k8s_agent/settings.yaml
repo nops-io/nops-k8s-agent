@@ -10,3 +10,4 @@ default:
   NOPS_K8S_AGENT_PROM_TOKEN: ""
   APP_VERSION: ""
   CHART_VERSION: ""
+  DEBUG: False

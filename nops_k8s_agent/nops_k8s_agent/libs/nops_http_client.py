@@ -50,7 +50,8 @@ class NopsHTTPClient(object):
                 if result.status_code != 200:
                     location = result.headers.get("Location")
                     logger.exception(
-                        f"Exception: Invalid response, status code: {result.status_code}, location: {location}"
+                        f"Exception: Invalid response, status code: {result.status_code}, location: {location}\n"
+                        f"Response content: \n{result.text}"
                     )
             except Exception:
                 logger.exception("Exception while forwarding logs")
