@@ -26,7 +26,7 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: nops-k8s-agent
-                    key: nops-api-key
+                    key: nops_api_key
               - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
                 valueFrom:
                   secretKeyRef:
