@@ -31,9 +31,32 @@ def duration_string(duration: int) -> str:
     return duration_str
 
 
-def is_json(input):
+def check_str_is_json(item):
     try:
-        json.loads(input)
+        return json.loads(item), True
     except ValueError:
-        return False
-    return True
+        return item, False
+
+
+def check_str_is_bool(item):
+    return (item == "true", True) if item.lower() in ["true", "false"] else item, False
+
+
+def flatten_dict(inp_dict, sep=".", exclude=[]):
+    obj = {}
+
+    def recurse(dict_node, parent_key=""):
+        if isinstance(dict_node, dict):
+            for k, v in dict_node.items():
+                new_key = parent_key + sep + k if parent_key else k
+                if new_key not in exclude:
+                    recurse(v, new_key)
+        else:
+            if isinstance(dict_node, str):
+                result, compliant = check_str_is_bool(dict_node)
+                obj[parent_key] = result if compliant else check_str_is_json(dict_node)[0]
+            else:
+                obj[parent_key] = dict_node
+
+    recurse(inp_dict)
+    return obj

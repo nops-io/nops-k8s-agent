@@ -9,18 +9,8 @@ from kubernetes import client
 from kubernetes import config
 from loguru import logger
 
-
-def transform(inp, non_metric_cols):
-    x = {}
-    y = []
-    for col in non_metric_cols:
-        # Check if this is json string change it to object
-        try:
-            x[col] = json.loads(inp[col])
-        except Exception:
-            x[col] = inp[col]
-    y.append(x)
-    return pd.Series(y)
+from nops_k8s_agent.libs.commonutils import flatten_dict
+from nops_k8s_agent.libs.constants import metadata_exclude_fields
 
 
 class KubeMetadata:
@@ -54,29 +44,17 @@ class KubeMetadata:
 
     def get_metadata(self):
         resource = self.list_node()
-        df = pd.json_normalize(resource["items"])
-        df.fillna("", inplace=True)
-        df["cluster_id"] = str(self.cluster_id())
-        df.drop(
-            columns=[
-                "status.conditions",
-                "status.addresses",
-                "status.images",
-                "spec.taints",
-                "status.volumesInUse",
-                "status.volumesAttached",
-                "metadata.managedFields",
-            ],
-            inplace=True,
-            errors="ignore",
-        )
-        k8s_node_metadata = [col for col in list(df.columns)]
-        df[["k8s_node_metadata"]] = df.apply(lambda x: transform(x, k8s_node_metadata), axis=1)
-        df["extraction_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        df["schema_version"] = settings.SCHEMA_VERSION
-        df["cluster_id"] = self.cluster_id()
-        df["event_id"] = str(uuid.uuid4())
-        df["cloud"] = "aws"  # TODO SUPPORT MORE CLOUD
-        df["event_type"] = "k8s_node_metadata"
-        df.drop(columns=k8s_node_metadata, inplace=True)
-        return df.to_dict(orient="records")
+
+        record_enrichment = {
+            "extraction_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "schema_version": settings.SCHEMA_VERSION,
+            "cluster_id": self.cluster_id(),
+            "event_id": str(uuid.uuid4()),
+            "cloud": "aws",
+            "event_type": "k8s_node_metadata",
+        }
+
+        return [
+            {"k8s_node_metadata": flatten_dict(item, exclude=metadata_exclude_fields), **record_enrichment}
+            for item in resource["items"]
+        ]
