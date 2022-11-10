@@ -15,5 +15,4 @@ class Command(BaseCommand):
             forward_logs(metadata, settings.NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER)
         except Exception as e:
             raise CommandError(f"Error when getting metadata {str(e)}")
-        self.stdout.write("\n" * 10 + str(metadata) + "\n" * 10)
         self.stdout.write(f"Got {len(metadata)} metadata event")
