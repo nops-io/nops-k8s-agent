@@ -1,6 +1,7 @@
 # Enable helm and setup kafka:
 namespace = "nops-k8s-agent"
 service_name = "nops-k8s-agent"
+update_settings (k8s_upsert_timeout_secs = 300)
 
 load("ext://helm_remote", "helm_remote")
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
@@ -41,6 +42,6 @@ docker_build(
     entrypoint="echo 'WARNING: container is running in dev mode. Entrypoint is overriden in Tiltfile'; sleep 9999999999"
 )
 
-k8s_yaml(helm("./charts-dev/nops-k8s-agent-dev", name=service_name, namespace=namespace, 
+k8s_yaml(helm("./charts-dev/nops-k8s-agent-dev", name=service_name, namespace=namespace,
     values=['./charts-dev/nops-k8s-agent-dev/values.yaml'],
 ))

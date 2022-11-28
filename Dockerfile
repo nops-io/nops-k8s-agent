@@ -4,7 +4,6 @@ WORKDIR /tmp/build
 
 # Install live dependencies.
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir matplotlib pandas
 
 
 COPY requirements.txt requirements.txt

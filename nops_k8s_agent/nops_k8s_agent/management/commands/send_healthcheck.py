@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            prometheus_status = KubeMetrics.get_status()
+            prometheus_status = KubeMetrics().get_status()
             kube_status = KubeMetadata.get_status()
             healthcheck = {
                 "event_type": "k8s_healthcheck",

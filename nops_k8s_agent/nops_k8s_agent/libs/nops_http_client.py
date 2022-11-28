@@ -164,9 +164,7 @@ def forward_logs(logs, aws_account_number):
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug(f"Forwarding {len(logs)} logs")
 
-    logs_to_forward = filter_logs(
-        list(map(json.dumps, logs)),
-    )
+    logs_to_forward = filter_logs([json.dumps(log, default=str) for log in logs])
     batcher = NopsBatcher(512 * 1000, 4 * 1000 * 1000, 400)
     cli = NopsHTTPClient(
         settings.NOPS_K8S_COLLECTOR_HOST,
