@@ -1,13 +1,6 @@
-import sys
 import uuid
 from collections import defaultdict
 from datetime import datetime
-from typing import Any
-
-from django.conf import settings
-
-from loguru import logger
-from prometheus_api_client import PrometheusConnect
 
 from nops_k8s_agent.libs.base_usage import BaseUsage
 

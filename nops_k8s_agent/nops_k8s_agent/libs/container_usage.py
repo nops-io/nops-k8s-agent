@@ -1,13 +1,6 @@
-import sys
 import uuid
 from collections import defaultdict
 from datetime import datetime
-from typing import Any
-
-from django.conf import settings
-
-from loguru import logger
-from prometheus_api_client import PrometheusConnect
 
 from nops_k8s_agent.libs.base_usage import BaseUsage
 
@@ -17,8 +10,8 @@ class ContainerUsage(BaseUsage):
         start_time = "30m"
         metrics_dict = {
             "container_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace)',
-            # "container_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container, pod, namespace)',
-            # "container_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container, pod, namespace)',
+            "container_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container, pod, namespace)',
+            "container_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container, pod, namespace)',
             "container_ram_bytes_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_memory_bytes{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace)',
             "container_fmt_cpu_cores_limit": 'avg(avg_over_time(kube_pod_container_resource_limits_cpu_cores{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace )',
             "container_ram_bytes_allocated": 'avg(avg_over_time(kube_pod_container_resource_requests_memory_bytes{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace)',
@@ -27,7 +20,6 @@ class ContainerUsage(BaseUsage):
         container_usage_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         for key, query_template in metrics_dict.items():
             metrics_params = {"start_time": start_time}
-            from pprint import pprint;import pdb; pdb.set_trace()  # fmt: skip
             metrics_query = self.build_metrics_query(query_template, input_params=metrics_params)
             responses = self.prom_client.custom_query(query=metrics_query)
             for metric_response in responses:
@@ -56,3 +48,20 @@ class ContainerUsage(BaseUsage):
                 "pod_uid": record["uid"],
             } | container_metrics
         return container_dict
+
+    def get_events(self) -> list:
+        now = datetime.utcnow()
+        final_result = []
+        container_dict = self.get_container_dict()
+        for key in container_dict:
+            metadata = {
+                "cluster_id": self.cluster_id,
+                "event_id": str(uuid.uuid4()),
+                "cloud": "aws",
+                "container_id": key,
+                "event_type": "k8s_container_usage",
+                "extraction_time": now.isoformat(),
+            }
+            result = container_dict.get(key, {}) | metadata
+            final_result.append(result)
+        return final_result

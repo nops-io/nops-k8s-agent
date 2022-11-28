@@ -22,6 +22,7 @@ cronjob:
   schedule_low: "0 * * * *"
   schedule_medium: "*/30 * * * *"
   schedule_high: "*/10 * * * *"
+  schedule_manual: "* * 31 2 *"
 
 env_variables:
   # Required paramters

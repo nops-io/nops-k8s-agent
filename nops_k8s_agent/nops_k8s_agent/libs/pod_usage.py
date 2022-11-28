@@ -1,13 +1,6 @@
-import sys
 import uuid
 from collections import defaultdict
 from datetime import datetime
-from typing import Any
-
-from django.conf import settings
-
-from loguru import logger
-from prometheus_api_client import PrometheusConnect
 
 from nops_k8s_agent.libs.base_usage import BaseUsage
 
@@ -78,12 +71,19 @@ class PodUsage(BaseUsage):
             }
         return pod_dict
 
-    def get_pod_usage_list(self) -> dict:
-        # What would this function do:
-        # Get list of pod
-        # Map all the metrics related to the pod
-        return
-
     def get_events(self) -> list:
+        now = datetime.utcnow()
         final_result = []
-        return
+        pod_dict = self.get_pod_dict()
+        for key in pod_dict:
+            metadata = {
+                "cluster_id": self.cluster_id,
+                "event_id": str(uuid.uuid4()),
+                "cloud": "aws",
+                "uid": key,
+                "event_type": "k8s_pod_usage",
+                "extraction_time": now.isoformat(),
+            }
+            result = pod_dict.get(key, {}) | metadata
+            final_result.append(result)
+        return final_result
