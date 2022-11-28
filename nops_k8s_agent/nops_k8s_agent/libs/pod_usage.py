@@ -62,7 +62,7 @@ class PodUsage(BaseUsage):
                 "uid": uid,
                 "pod": record["pod"],
                 "host_ip": record["host_ip"],
-                "pod_ip": record["pod_ip"],
+                "pod_ip": record.get("pod_ip", ""),
                 "namespace": record["namespace"],
                 "basename": owner,
                 "status": status,

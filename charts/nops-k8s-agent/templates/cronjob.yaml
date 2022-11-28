@@ -82,7 +82,7 @@ spec:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["/bin/sh"]
-            args: ["sleep", "3600"]
+            command: ["sleep"]
+            args: ["3600"]
           restartPolicy: Never
 {{ end }}
