@@ -49,11 +49,11 @@ metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-manual
 spec:
   schedule: "{{ .Values.cronjob.schedule_low }}"
+  suspend: true
   jobTemplate:
     spec:
       template:
         spec:
-          suspend: true
           activeDeadlineSeconds: 3600
           {{ if .Values.serviceAccount.create }}
           serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
