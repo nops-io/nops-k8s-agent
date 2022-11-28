@@ -2,6 +2,8 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 
+from loguru import logger
+
 from nops_k8s_agent.libs.base_usage import BaseUsage
 
 
@@ -11,24 +13,27 @@ class NodeUsage(BaseUsage):
         response = self.prom_client.custom_query(query="avg_over_time(kube_node_info[30m])")
         node_dict = {}
         for node_record in response:
-            record = node_record["metric"]
-            node_name = record["node"]
-            provider_id = record["provider_id"]
-            if provider_id.startswith("aws:///"):
-                instance_id = provider_id.split("/")[-1]
-                availability_zone = provider_id[7:].split("/")[0]
-                node_host = node_name.split(".")[0][3:].replace("-", ".")
-            else:
-                instance_id = "N/A"
-                availability_zone = "N/A"
-                node_host = record["internal_ip"]
+            try:
+                record = node_record["metric"]
+                node_name = record["node"]
+                provider_id = record["provider_id"]
+                if provider_id.startswith("aws:///"):
+                    instance_id = provider_id.split("/")[-1]
+                    availability_zone = provider_id[7:].split("/")[0]
+                    node_host = node_name.split(".")[0][3:].replace("-", ".")
+                else:
+                    instance_id = "N/A"
+                    availability_zone = "N/A"
+                    node_host = record["internal_ip"]
 
-            node_dict[node_host] = {
-                "node": node_name,
-                "provider_id": provider_id,
-                "instance_id": instance_id,
-                "availability_zone": availability_zone,
-            }
+                node_dict[node_host] = {
+                    "node": node_name,
+                    "provider_id": provider_id,
+                    "instance_id": instance_id,
+                    "availability_zone": availability_zone,
+                }
+            except Exception as e:
+                logger.warning(f"Node info fetching has error {str(e)}")
         return node_dict
 
     def get_metrics_dict(self, query) -> dict:
@@ -50,12 +55,15 @@ class NodeUsage(BaseUsage):
         }
         node_usage_dict = defaultdict(dict)
         for key, query_template in metrics_dict.items():
-            metrics_params = {"start_time": start_time}
-            metrics_query = self.build_metrics_query(query_template, input_params=metrics_params)
-            responses = self.prom_client.custom_query(query=metrics_query)
-            for metric_response in responses:
-                instance = metric_response["metric"]["instance"].split(":")[0]
-                node_usage_dict[instance][key] = self.get_metric_value(metric_response)
+            try:
+                metrics_params = {"start_time": start_time}
+                metrics_query = self.build_metrics_query(query_template, input_params=metrics_params)
+                responses = self.prom_client.custom_query(query=metrics_query)
+                for metric_response in responses:
+                    instance = metric_response["metric"]["instance"].split(":")[0]
+                    node_usage_dict[instance][key] = self.get_metric_value(metric_response)
+            except Exception as e:
+                logger.warning(f"Node metric fetching has error {str(e)}")
 
         return node_usage_dict
 

@@ -2,6 +2,8 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 
+from loguru import logger
+
 from nops_k8s_agent.libs.base_usage import BaseUsage
 
 
@@ -17,16 +19,20 @@ class PodUsage(BaseUsage):
         owner_map = {"Job": "job_name", "ReplicationController": "replicationcontroller", "ReplicaSet": "replicaset"}
         owner_dict = defaultdict(lambda: defaultdict(dict))
         for key, query_template in owner_types.items():
-            metrics_params = {"start_time": "30m"}
-            metrics_query = self.build_metrics_query(query_template, input_params=metrics_params)
-            responses = self.prom_client.custom_query(query=metrics_query)
-            for metric_response in responses:
-                owner_name = metric_response["metric"]["owner_name"]
-                namespace = metric_response["metric"]["namespace"]
-                name = metric_response["metric"][owner_map.get(key)]
-                if owner_name == "<none>":
-                    owner_name = None
-                owner_dict[key][namespace][name] = owner_name
+            try:
+                metrics_params = {"start_time": "30m"}
+                metrics_query = self.build_metrics_query(query_template, input_params=metrics_params)
+                responses = self.prom_client.custom_query(query=metrics_query)
+                for metric_response in responses:
+                    owner_name = metric_response["metric"]["owner_name"]
+                    namespace = metric_response["metric"]["namespace"]
+                    name = metric_response["metric"][owner_map.get(key)]
+                    if owner_name == "<none>":
+                        owner_name = None
+                    owner_dict[key][namespace][name] = owner_name
+            except Exception as e:
+                logger.warning(f"Pod metrics fetching has error {str(e)}")
+
         return owner_dict
 
     def get_status_dict(self) -> dict:
@@ -47,28 +53,33 @@ class PodUsage(BaseUsage):
         owner_dict = self.get_owner_dict()
         status_dict = self.get_status_dict()
         for pod_record in response:
-            record = pod_record["metric"]
-            uid = record["uid"]
-            if record["created_by_name"] and record["created_by_name"] != "<none>":
-                owner = (
-                    owner_dict.get(record["created_by_kind"], {}).get(record["created_by_name"], {}).get(record["pod"])
-                )
-                if owner is None:
-                    owner = record["created_by_name"]
-            else:
-                owner = ""
-            status = status_dict.get(record["namespace"], {}).get(record["pod"])
-            pod_dict[uid] = {
-                "uid": uid,
-                "pod": record["pod"],
-                "host_ip": record["host_ip"],
-                "pod_ip": record.get("pod_ip", ""),
-                "namespace": record["namespace"],
-                "basename": owner,
-                "status": status,
-                "created_by_kind": record["created_by_kind"],
-                "created_by_name": record["created_by_name"],
-            }
+            try:
+                record = pod_record["metric"]
+                uid = record["uid"]
+                if record["created_by_name"] and record["created_by_name"] != "<none>":
+                    owner = (
+                        owner_dict.get(record["created_by_kind"], {})
+                        .get(record["created_by_name"], {})
+                        .get(record["pod"])
+                    )
+                    if owner is None:
+                        owner = record["created_by_name"]
+                else:
+                    owner = ""
+                status = status_dict.get(record["namespace"], {}).get(record["pod"])
+                pod_dict[uid] = {
+                    "uid": uid,
+                    "pod": record["pod"],
+                    "host_ip": record["host_ip"],
+                    "pod_ip": record.get("pod_ip", ""),
+                    "namespace": record["namespace"],
+                    "basename": owner,
+                    "status": status,
+                    "created_by_kind": record["created_by_kind"],
+                    "created_by_name": record["created_by_name"],
+                }
+            except Exception as e:
+                logger.warning(f"Pod usage fetching has error {str(e)}")
         return pod_dict
 
     def get_events(self) -> list:
