@@ -31,10 +31,12 @@ class ContainerUsage(BaseUsage):
 
     def get_container_dict(self) -> dict:
         container_metric_dict = self.get_container_metric_dict()
-        response = self.prom_client.custom_query(query="avg_over_time(kube_pod_container_info[30m])")
+        response = self.prom_client.custom_query(query='avg_over_time(kube_pod_container_info{container!=""}[30m])')
         container_dict = {}
         for node_record in response:
             record = node_record["metric"]
+            if "container_id" not in record:
+                continue
             container = record["container"]
             container_id = record["container_id"]
             pod = record["pod"]
