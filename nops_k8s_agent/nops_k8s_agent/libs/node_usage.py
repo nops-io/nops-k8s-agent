@@ -81,6 +81,6 @@ class NodeUsage(BaseUsage):
                 "event_type": "k8s_node_usage",
                 "extraction_time": now.isoformat(),
             }
-            result = node_dict[key] | node_metric_dict.get(key) | metadata
+            result = node_dict[key] | node_metric_dict.get(key, {}) | metadata
             final_result.append(result)
         return final_result
