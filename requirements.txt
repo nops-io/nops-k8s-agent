@@ -1,4 +1,4 @@
-djangorestframework==3.13.1
+djangorestframework
 hypercorn==0.13.2
 dynaconf==3.1.7
 prometheus-api-client==0.5.1
@@ -7,3 +7,4 @@ loguru
 django-extensions
 ipython
 requests-futures
+boto3

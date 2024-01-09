@@ -20,7 +20,7 @@ serviceAccount:
 cronjob:
   schedule: "*/10 * * * *"
   schedule_low: "0 * * * *"
-  schedule_medium: "*/30 * * * *"
+  schedule_medium: "0 * * * *"
   schedule_high: "*/10 * * * *"
   schedule_manual: "* * 31 2 *"
 
@@ -37,3 +37,7 @@ env_variables:
   APP_NOPS_K8S_COLLECTOR_SKIP_SSL_VALIDATION: ""
   APP_NOPS_K8S_AGENT_PROM_TOKEN: ""
   APP_DEBUG: False
+  # set from helm command line
+  AWS_DEFAULT_REGION: "us-west-2"
+  AWS_SECRET_ACCESS_KEY: null
+  AWS_ACCESS_KEY_ID: null
