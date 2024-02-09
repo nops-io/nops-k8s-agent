@@ -30,10 +30,9 @@ class Command(BaseCommand):
 
         s3_bucket = settings.AWS_S3_BUCKET
         s3_prefix = settings.AWS_S3_PREFIX
-        month = dt.datetime.now().month
-        year = dt.datetime.now().year
-        path = f"{s3_prefix}container_cost/year={year}/month={month}"
-        tmp_path = f"/tmp/year={year}/month={month}/"
+        now = dt.datetime.now()
+        path = f"{s3_prefix}container_cost/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
+        tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
         for klass in collect_klass:
             try:
                 instance = klass()
@@ -41,8 +40,7 @@ class Command(BaseCommand):
                 instance.convert_to_table_and_save(filename=tmp_file)
                 s3_key = f"{path}/{klass.FILENAME}"
                 s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
-                self.stdout.write("File {filename} successfully uploaded to s3://{s3_bucket}/{s3_key}")
-                self.stdout.write("Got no metrics event")
+                self.stdout.write(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
             except Exception as e:
                 self.stderr.write(f"Error when processing {type(klass)} {str(e)}")
             finally:

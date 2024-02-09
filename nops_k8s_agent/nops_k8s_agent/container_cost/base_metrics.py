@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
@@ -98,6 +99,10 @@ class BaseMetrics(BaseProm):
 
         # Create a PyArrow Table
         table = pa.Table.from_pydict(arrays)
+        directory = os.path.dirname(filename)
+
+        # Ensure the directory exists
+        os.makedirs(directory, exist_ok=True)
 
         # Write the table to a Parquet file
         pq.write_table(table, filename)

@@ -1,4 +1,4 @@
-from base_metrics import BaseMetrics
+from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 
 
 class DeploymentMetrics(BaseMetrics):
