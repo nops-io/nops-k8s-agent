@@ -7,8 +7,6 @@ load("ext://helm_remote", "helm_remote")
 load('ext://helm_resource', 'helm_resource', 'helm_repo')
 
 if not os.environ.get('CI'):
-   helm_repo(name="prometheus-community",url="https://prometheus-community.github.io/helm-charts")
-   helm_resource(name="prometheus", chart="prometheus-community/kube-prometheus-stack")
    local_resource(
        "test-everything-prometheus",
        "make test_prometheus",

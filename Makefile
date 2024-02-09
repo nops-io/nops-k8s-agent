@@ -26,3 +26,6 @@ install_precommit:
 
 create_namespace:
 	kubectl create namespace nops-k8s-agent || true
+cp:
+	@POD_NAME=$$(kubectl get pods -n nops-k8s-agent -l app=nops-k8s-agent -o jsonpath="{.items[0].metadata.name}") && \
+	kubectl cp nops-k8s-agent/$$POD_NAME:$(filename) ./$(filename)

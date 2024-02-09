@@ -24,7 +24,7 @@ cronjob:
 
 env_variables:
   # Required paramters
-  APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-operated.default.svc.cluster.local:9090"
+  APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-server.prometheus-system.svc.cluster.local:80"
   APP_NOPS_K8S_AGENT_CLUSTER_ID: "TEST"
   APP_NOPS_K8S_COLLECTOR_API_KEY: "abc.123"
   APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER: "12345"

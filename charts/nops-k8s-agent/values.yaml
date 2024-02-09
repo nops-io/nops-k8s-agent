@@ -18,7 +18,7 @@ serviceAccount:
   create: true
 
 cronjob:
-  schedule: "*/10 * * * *"
+  schedule: "5 * * * *"
   schedule_low: "0 * * * *"
   schedule_medium: "0 * * * *"
   schedule_high: "*/10 * * * *"
@@ -26,7 +26,7 @@ cronjob:
 
 env_variables:
   # Required paramters
-  APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-operated.nops-k8s-agent.svc.cluster.local:9090"
+  APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus.nops-k8s-agent.svc.cluster.local:9090"
   APP_NOPS_K8S_AGENT_CLUSTER_ID: "DEMO"
   # Optional parameters
   APP_ENV: "live"

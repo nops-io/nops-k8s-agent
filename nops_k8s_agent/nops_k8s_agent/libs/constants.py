@@ -23,10 +23,10 @@ METRICS_SET = {
     "node_metrics": {
         "period_seconds": 15 * 60,  # 15 minutes
         "templates": {
-            "node_metrics_fmt_node_memory_Buffers_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{start_time}])) by (instance, {cluster_id})",
-            "node_metrics_fmt_node_memory_Cached_bytes": "avg(avg_over_time(node_memory_Cached_bytes[{start_time}])) by (instance, {cluster_id})",
-            "node_metrics_fmt_node_memory_MemFree_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{start_time}])) by (instance, {cluster_id})",
-            "node_metrics_fmt_node_cpu_seconds_total": 'avg(avg_over_time(node_cpu_seconds_total{{mode="idle"}}[{start_time}])) by (instance, {cluster_id}, mode, cpu)',
+            # "node_metrics_fmt_node_memory_Buffers_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{start_time}])) by (instance, {cluster_id})",
+            # "node_metrics_fmt_node_memory_Cached_bytes": "avg(avg_over_time(node_memory_Cached_bytes[{start_time}])) by (instance, {cluster_id})",
+            # "node_metrics_fmt_node_memory_MemFree_bytes": "avg(avg_over_time(node_memory_Buffers_bytes[{start_time}])) by (instance, {cluster_id})",
+            # "node_metrics_fmt_node_cpu_seconds_total": 'avg(avg_over_time(node_cpu_seconds_total{{mode="idle"}}[{start_time}])) by (instance, {cluster_id}, mode, cpu)',
         },
     },
     "low": {
@@ -51,10 +51,10 @@ METRICS_SET = {
     "medium": {
         "period_seconds": 35 * 60,  # 35 minutes
         "templates": {
-            "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace, node, {cluster_id}, provider_id)',
+            # "metrics_fmt_ram_usage_bytes": 'avg(avg_over_time(container_memory_usage_bytes{{container!="", container!="POD", node!=""}}[{start_time}])) by (container, pod, namespace, node, {cluster_id}, provider_id)',
             "metrics_fmt_net_transfer_bytes": 'sum(increase(container_network_transmit_bytes_total{{pod!=""}}[{start_time}])) by (pod_name, pod, namespace, {cluster_id})',
-            "metrics_fmt_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container_name, container, pod_name, pod, namespace, instance,  {cluster_id})',
-            "metrics_fmt_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container_name, container, pod_name, pod, namespace, instance,  {cluster_id})',
+            # "metrics_fmt_cpu_usage_avg": 'avg(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container_name, container, pod_name, pod, namespace, instance,  {cluster_id})',
+            # "metrics_fmt_cpu_usage_max": 'max(rate(container_cpu_usage_seconds_total{{container!="", container_name!="POD", container!="POD"}}[{start_time}])) by (container_name, container, pod_name, pod, namespace, instance,  {cluster_id})',
         },
     },
     "high": {
