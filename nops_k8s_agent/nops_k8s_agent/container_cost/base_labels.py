@@ -22,7 +22,8 @@ class BaseLabels(BaseProm):
         "kube_namespace_annotations": [],
         "kube_pod_annotations": [],
     }
-    FILENAME = "base_labels.parquet"
+    FILE_PREFIX = "base_labels"
+    FILENAME = "base_labels_0.parquet"
 
     def get_metrics(self, metric_name: str, period: str = "last_hour") -> Any:
         # This function to get metrics from prometheus

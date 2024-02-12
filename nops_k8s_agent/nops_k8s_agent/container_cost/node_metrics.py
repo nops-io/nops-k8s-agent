@@ -21,4 +21,5 @@ class NodeMetrics(BaseMetrics):
             "unit",
         ],
     }
-    FILENAME = "node_metrics.parquet"
+    FILE_PREFIX = "node_metrics"
+    FILENAME = "node_metrics_0.parquet"

@@ -5,4 +5,5 @@ class JobMetrics(BaseMetrics):
     # This class to get pod metrics from prometheus and put it in dictionary
     # List of metrics:
     list_of_metrics = {"kube_job_status_failed": ["job_name", "namespace", "reason"]}
-    FILENAME = "job_metrics.parquet"
+    FILE_PREFIX = "job_metrics"
+    FILENAME = "job_metrics_0.parquet"

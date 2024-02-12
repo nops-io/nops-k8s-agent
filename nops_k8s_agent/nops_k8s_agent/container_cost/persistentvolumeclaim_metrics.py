@@ -17,4 +17,5 @@ class PersistentvolumeclaimMetrics(BaseMetrics):
             "persistentvolumeclaim",
         ],
     }
-    FILENAME = "persistentvolumeclaim_metrics.parquet"
+    FILE_PREFIX = "persistentvolumeclaim_metrics"
+    FILENAME = "persistentvolumeclaim_metrics_0.parquet"
