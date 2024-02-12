@@ -42,8 +42,12 @@ As the current version using helm chart for deployment. You need to clone this r
 
 You can use your own Prometheus instance or launching your nops-k8s-agent namespace
 
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm install prometheus prometheus-community/kube-prometheus-stack
+    helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
+      --namespace prometheus-system --create-namespace \
+      --set prometheus-pushgateway.enabled=false \
+      --set alertmanager.enabled=false \
+      -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
+
 
 ### Create Secret
 Create Secret "nops-k8s-agent" with following values in it.
@@ -61,6 +65,9 @@ metadata:
 data:
   nops_api_key: YWRtaW4=
   aws_account_id: MWYyZDFlMmU2N2Rm
+  aws_access_key_id: MWYyZDFlMmU2N2Rm 
+  aws_secret_access_key: MWYyZDFlMmU2N2Rm
+
 ```
 ### Configure values.yaml
 
@@ -68,6 +75,9 @@ There are required variables:
 
 - APP_PROMETHEUS_SERVER_ENDPOINT - depends on your prometheus stack installation 
 - APP_NOPS_K8S_AGENT_CLUSTER_ID - needs to match with your cluster id 
+- APP_AWS_S3_BUCKET
+- APP_AWS_S3_PREFIX
+
 
 
 You can use your own Chart values file or using our example setup_values script to fetch variable_env from Parameter Store SSM (Not encrypted)
