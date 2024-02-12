@@ -32,7 +32,7 @@ spec:
                   secretKeyRef:
                     name: nops-k8s-agent
                     key: aws_account_id
-              - name: AWS_ACCESS_KEY_ID:
+              - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
                     name: nops-k8s-agent
