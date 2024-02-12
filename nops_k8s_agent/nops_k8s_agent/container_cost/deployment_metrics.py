@@ -14,4 +14,5 @@ class DeploymentMetrics(BaseMetrics):
             "namespace",
         ],
     }
-    FILENAME = "deployment_metrics.parquet"
+    FILE_PREFIX = "deployment_metrics"
+    FILENAME = "deployment_metrics_0.parquet"

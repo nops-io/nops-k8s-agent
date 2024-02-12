@@ -13,4 +13,5 @@ class PersistentvolumeMetrics(BaseMetrics):
             "phase",
         ],
     }
-    FILENAME = "persistentvolume_metrics.parquet"
+    FILE_PREFIX = "persistentvolume_metrics"
+    FILENAME = "persistentvolume_metrics_0.parquet"

@@ -31,11 +31,12 @@ class Command(BaseCommand):
         s3_bucket = settings.AWS_S3_BUCKET
         s3_prefix = settings.AWS_S3_PREFIX
         now = dt.datetime.now()
-        path = f"{s3_prefix}container_cost/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
         tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
         for klass in collect_klass:
             try:
                 instance = klass()
+                FILE_PREFIX = klass.FILE_PREFIX
+                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
                 tmp_file = f"{tmp_path}{klass.FILENAME}"
                 instance.convert_to_table_and_save(filename=tmp_file)
                 s3_key = f"{path}/{klass.FILENAME}"

@@ -17,4 +17,5 @@ class PodMetrics(BaseMetrics):
         # "kube_pod_container_resource_limits_cpu_cores": [], # Does not has
         # "kube_pod_container_resource_limits_memory_bytes": [], # Does not has
     }
-    FILENAME = "pod_metrics.parquet"
+    FILE_PREFIX = "pod_metrics"
+    FILENAME = "pod_metrics_0.parquet"
