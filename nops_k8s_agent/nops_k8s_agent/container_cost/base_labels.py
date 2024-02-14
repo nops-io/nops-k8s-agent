@@ -1,3 +1,4 @@
+import json
 import os
 from collections import defaultdict
 from datetime import datetime
@@ -24,8 +25,10 @@ class BaseLabels(BaseProm):
     }
     FILE_PREFIX = "base_labels"
     FILENAME = "base_labels_0.parquet"
+    CUSTOM_METRICS_FUNCTION = None
+    CUSTOM_COLUMN = None
 
-    def get_metrics(self, metric_name: str, period: str = "last_hour") -> Any:
+    def get_metrics(self, metric_name: str, period: str = "last_hour", step: str = "5m") -> Any:
         # This function to get metrics from prometheus
         now = datetime.now(pytz.utc)
 
@@ -36,35 +39,41 @@ class BaseLabels(BaseProm):
             start_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
             end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
 
-        query = f"avg_over_time({metric_name}[15m])"
+        query = f"avg_over_time({metric_name}[{step}])"
         try:
-            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step="1h")
+            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
             return response
         except Exception as e:
             logger.error(f"Error in get_metrics: {e}")
             return None
 
-    def get_all_metrics(self, period: str = "last_hour") -> dict:
+    def get_all_metrics(self, period: str = "last_hour", step: str = "5m") -> dict:
         # This function to get all metrics from prometheus
         metrics = defaultdict(list)
         for metric_name in self.list_of_metrics.keys():
-            response = self.get_metrics(metric_name, period)
+            response = self.get_metrics(metric_name=metric_name, period=period, step=step)
             if response:
                 metrics[metric_name] = response
         return metrics
 
-    def convert_to_table_and_save(self, period: str = "last_hour", filename: str = FILENAME) -> None:
-        all_metrics_data = self.get_all_metrics(period)
+    def convert_to_table_and_save(self, period: str = "last_hour", filename: str = FILENAME, step: str = "5m") -> None:
+        all_metrics_data = self.get_all_metrics(period=period, step=step)
         now = datetime.now(pytz.utc)
 
         # Prepare data structure for PyArrow
         columns = {
             "metric_name": [],
-            "timestamp": [],
-            "value": [],
-            "period": [],
+            "start_time": [],
             "created_at": [],
+            "value": [],
+            "values": [],
+            "avg_value": [],
+            "count_value": [],
+            "period": [],
+            "step": [],
         }
+        if self.CUSTOM_COLUMN:
+            columns.update(self.CUSTOM_COLUMN)
 
         # Dynamically handle labels as columns
         dynamic_labels = set()
@@ -72,22 +81,29 @@ class BaseLabels(BaseProm):
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
                 metric_labels = data["metric"]
-                metric_values = data["values"]  # This is a list of [timestamp, value] lists
+                if "values" not in data or len(data["values"]) == 0:
+                    continue
+                columns["metric_name"].append(metric_name)
+                columns["start_time"].append(float(data["values"][0][0]))
+                avg_value = sum([float(x[1]) for x in data["values"]]) / len(data["values"])
+                count_value = len(data["values"])
+                columns["avg_value"].append(avg_value)
+                columns["count_value"].append(count_value)
+                columns["values"].append(json.dumps(data["values"]))
+                columns["value"].append(float(data["values"][0][1]))
+                columns["step"].append(step)
+                columns["created_at"].append(now.timestamp())
+                columns["period"].append(period)
+                if self.CUSTOM_METRICS_FUNCTION and callable(self.CUSTOM_METRICS_FUNCTION) and self.CUSTOM_COLUMN:
+                    custom_metrics = self.CUSTOM_METRICS_FUNCTION(data)
+                    columns[self.CUSTOM_COLUMN.keys()[0]] = custom_metrics
 
-                for value_pair in metric_values:
-                    timestamp, value = value_pair
-                    columns["metric_name"].append(metric_name)
-                    columns["timestamp"].append(timestamp)
-                    columns["value"].append(value)
-                    columns["period"].append(period)
-                    columns["created_at"].append(now.timestamp())
-
-                    # Add/update dynamic labels for this metric
-                    for label, label_value in metric_labels.items():
-                        if label not in columns:
-                            columns[label] = [None] * (len(columns["metric_name"]) - 1)  # Initialize with Nones
-                            dynamic_labels.add(label)
-                        columns[label].append(label_value)
+                # Add/update dynamic labels for this metric
+                for label, label_value in metric_labels.items():
+                    if label not in columns:
+                        columns[label] = [None] * (len(columns["metric_name"]) - 1)  # Initialize with Nones
+                        dynamic_labels.add(label)
+                    columns[label].append(label_value)
 
                 # Ensure all dynamic label columns are of equal length to other columns
                 for label in dynamic_labels:

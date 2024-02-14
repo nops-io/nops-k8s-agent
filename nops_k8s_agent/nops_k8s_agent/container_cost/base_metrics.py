@@ -1,3 +1,4 @@
+import json
 import os
 from collections import defaultdict
 from datetime import datetime
@@ -18,7 +19,7 @@ class BaseMetrics(BaseProm):
     list_of_metrics = {}
     FILENAME = "base_metrics.parquet"
 
-    def get_metrics(self, metric_name: str, period: str = "last_hour") -> Any:
+    def get_metrics(self, metric_name: str, period: str = "last_hour", step: str = "5m") -> Any:
         # This function to get metrics from prometheus
         group_by_list = self.list_of_metrics.get(metric_name)
         group_by_str = ",".join(group_by_list)
@@ -31,15 +32,15 @@ class BaseMetrics(BaseProm):
             start_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
             end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
 
-        query = f"avg(avg_over_time({metric_name}[5m])) by ({group_by_str})"
+        query = f"avg(avg_over_time({metric_name}[{step}])) by ({group_by_str})"
         try:
-            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step="1h")
+            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
             return response
         except Exception as e:
             logger.error(f"Error in get_metrics: {e}")
             return None
 
-    def get_all_metrics(self, period: str = "last_hour") -> dict:
+    def get_all_metrics(self, period: str = "last_hour", step: str = "5m") -> dict:
         # This function to get all metrics from prometheus
         metrics = defaultdict(list)
         for metric_name in self.list_of_metrics.keys():
@@ -48,7 +49,7 @@ class BaseMetrics(BaseProm):
                 metrics[metric_name] = response
         return metrics
 
-    def convert_to_table_and_save(self, period: str = "last_hour", filename: str = FILENAME) -> None:
+    def convert_to_table_and_save(self, period: str = "last_hour", step: str = "5m", filename: str = FILENAME) -> None:
         all_metrics_data = self.get_all_metrics(period)
         now = datetime.now(pytz.utc)
 
@@ -59,7 +60,11 @@ class BaseMetrics(BaseProm):
             "start_time": [],
             "created_at": [],
             "value": [],
+            "values": [],
+            "avg_value": [],
+            "count_value": [],
             "period": [],
+            "step": [],
         }
 
         # Dynamically handle labels as columns
@@ -68,8 +73,16 @@ class BaseMetrics(BaseProm):
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
                 columns["metric_name"].append(metric_name)
+                if "values" not in data or len(data["values"]) == 0:
+                    continue
                 columns["start_time"].append(float(data["values"][0][0]))
+                avg_value = sum([float(x[1]) for x in data["values"]]) / len(data["values"])
+                count_value = len(data["values"])
+                columns["avg_value"].append(avg_value)
+                columns["count_value"].append(count_value)
+                columns["values"].append(json.dumps(data["values"]))
                 columns["value"].append(float(data["values"][0][1]))
+                columns["step"].append(step)
                 columns["created_at"].append(now.timestamp())
                 columns["period"].append(period)
 
