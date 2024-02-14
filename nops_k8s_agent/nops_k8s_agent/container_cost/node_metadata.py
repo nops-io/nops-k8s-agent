@@ -1,4 +1,4 @@
-from nops_k8s_agent.container_cost.base_metrics import BaseLabels
+from nops_k8s_agent.container_cost.base_labels import BaseLabels
 
 
 def custom_metrics_function(data: dict) -> str:
