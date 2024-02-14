@@ -9,7 +9,6 @@ class NodeMetadata(BaseLabels):
     }
     FILE_PREFIX = "node_metadata"
     FILENAME = "node_metadata_0.parquet"
-    CUSTOM_METRICS_FUNCTION = None
     CUSTOM_COLUMN = {"instance_id": []}
 
     def custom_metrics_function(self, data: dict) -> str:
