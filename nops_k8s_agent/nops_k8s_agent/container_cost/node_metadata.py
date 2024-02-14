@@ -10,7 +10,7 @@ def custom_metrics_function(data: dict) -> str:
     return instance_id
 
 
-class NodeMetrics(BaseLabels):
+class NodeMetadata(BaseLabels):
     # This class to get pod metrics from prometheus and put it in dictionary
     # List of metrics:
     list_of_metrics = {

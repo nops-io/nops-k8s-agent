@@ -19,18 +19,10 @@ class BaseMetrics(BaseProm):
     list_of_metrics = {}
     FILENAME = "base_metrics.parquet"
 
-    def get_metrics(self, metric_name: str, period: str = "last_hour", step: str = "5m") -> Any:
+    def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus
         group_by_list = self.list_of_metrics.get(metric_name)
         group_by_str = ",".join(group_by_list)
-        now = datetime.now(pytz.utc)
-
-        if period == "last_hour":
-            start_time = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
-            end_time = start_time + timedelta(hours=1) - timedelta(seconds=1)
-        elif period == "last_day":
-            start_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-            end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
 
         query = f"avg(avg_over_time({metric_name}[{step}])) by ({group_by_str})"
         try:
@@ -40,17 +32,24 @@ class BaseMetrics(BaseProm):
             logger.error(f"Error in get_metrics: {e}")
             return None
 
-    def get_all_metrics(self, period: str = "last_hour", step: str = "5m") -> dict:
+    def get_all_metrics(self, start_time: datetime, end_time: datetime, step: str) -> dict:
         # This function to get all metrics from prometheus
         metrics = defaultdict(list)
         for metric_name in self.list_of_metrics.keys():
-            response = self.get_metrics(metric_name, period)
+            response = self.get_metrics(start_time=start_time, end_time=end_time, metric_name=metric_name, step=step)
             if response:
                 metrics[metric_name] = response
         return metrics
 
-    def convert_to_table_and_save(self, period: str = "last_hour", step: str = "5m", filename: str = FILENAME) -> None:
-        all_metrics_data = self.get_all_metrics(period)
+    def convert_to_table_and_save(self, period: str, step: str = "5m", filename: str = FILENAME) -> None:
+        now = datetime.now(pytz.utc)
+        if period == "last_hour":
+            start_time = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            end_time = start_time + timedelta(hours=1) - timedelta(seconds=1)
+        elif period == "last_day":
+            start_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+            end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
+        all_metrics_data = self.get_all_metrics(start_time=start_time, end_time=end_time, step=step)
         now = datetime.now(pytz.utc)
 
         # Prepare data structure for PyArrow
@@ -75,7 +74,7 @@ class BaseMetrics(BaseProm):
                 columns["metric_name"].append(metric_name)
                 if "values" not in data or len(data["values"]) == 0:
                     continue
-                columns["start_time"].append(float(data["values"][0][0]))
+                columns["start_time"].append(int(start_time.timestamp()))
                 avg_value = sum([float(x[1]) for x in data["values"]]) / len(data["values"])
                 count_value = len(data["values"])
                 columns["avg_value"].append(avg_value)

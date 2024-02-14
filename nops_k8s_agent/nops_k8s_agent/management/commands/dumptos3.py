@@ -9,6 +9,7 @@ import boto3
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
 from nops_k8s_agent.container_cost.deployment_metrics import DeploymentMetrics
 from nops_k8s_agent.container_cost.job_metrics import JobMetrics
+from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
 from nops_k8s_agent.container_cost.node_metrics import NodeMetrics
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
@@ -25,6 +26,7 @@ class Command(BaseCommand):
             PersistentvolumeMetrics,
             PersistentvolumeclaimMetrics,
             PodMetrics,
+            NodeMetadata,
         ]
         s3 = boto3.client("s3")
 
@@ -38,7 +40,7 @@ class Command(BaseCommand):
                 FILE_PREFIX = klass.FILE_PREFIX
                 path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
                 tmp_file = f"{tmp_path}{klass.FILENAME}"
-                instance.convert_to_table_and_save(filename=tmp_file)
+                instance.convert_to_table_and_save(period="last_hour", step="5m", filename=tmp_file)
                 s3_key = f"{path}/{klass.FILENAME}"
                 s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
                 self.stdout.write(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
