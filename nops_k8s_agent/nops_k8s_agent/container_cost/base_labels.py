@@ -95,7 +95,7 @@ class BaseLabels(BaseProm):
                 columns["period"].append(period)
                 if self.CUSTOM_METRICS_FUNCTION and callable(self.CUSTOM_METRICS_FUNCTION) and self.CUSTOM_COLUMN:
                     custom_metrics = self.CUSTOM_METRICS_FUNCTION(data)
-                    columns[list(self.CUSTOM_COLUMN.keys())[0]] = custom_metrics
+                    columns[list(self.CUSTOM_COLUMN.keys())[0]].append(custom_metrics)
 
                 # Add/update dynamic labels for this metric
                 for label, label_value in metric_labels.items():
