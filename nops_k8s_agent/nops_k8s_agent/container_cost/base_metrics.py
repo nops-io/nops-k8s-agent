@@ -55,6 +55,7 @@ class BaseMetrics(BaseProm):
         # Prepare data structure for PyArrow
         # Initialize lists for each column
         columns = {
+            "cluster_arn": [],
             "metric_name": [],
             "start_time": [],
             "created_at": [],
@@ -71,6 +72,7 @@ class BaseMetrics(BaseProm):
 
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
+                columns["cluster_arn"].append(self.cluster_arn)
                 columns["metric_name"].append(metric_name)
                 if "values" not in data or len(data["values"]) == 0:
                     continue
