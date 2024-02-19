@@ -37,7 +37,7 @@ class Command(BaseCommand):
         tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
         for klass in collect_klass:
             try:
-                instance = klass()
+                instance = klass(cluster_arn=cluster_arn)
                 FILE_PREFIX = klass.FILE_PREFIX
                 path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
                 tmp_file = f"{tmp_path}{klass.FILENAME}"
