@@ -61,6 +61,7 @@ class BaseLabels(BaseProm):
 
         # Prepare data structure for PyArrow
         columns = {
+            "cluster_arn": [],
             "metric_name": [],
             "start_time": [],
             "created_at": [],
@@ -79,6 +80,7 @@ class BaseLabels(BaseProm):
 
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
+                columns["cluster_arn"].append(self.cluster_arn)
                 metric_labels = data["metric"]
                 if "values" not in data or len(data["values"]) == 0:
                     continue

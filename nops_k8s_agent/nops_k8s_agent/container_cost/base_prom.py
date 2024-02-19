@@ -7,7 +7,7 @@ from prometheus_api_client import PrometheusConnect
 
 
 class BaseProm:
-    def __init__(self):
+    def __init__(self, cluster_arn: str) -> None:
         if settings.NOPS_K8S_AGENT_PROM_TOKEN:
             headers = {"Authorization": settings.NOPS_K8S_AGENT_PROM_TOKEN}
         else:
@@ -19,3 +19,5 @@ class BaseProm:
         if settings.DEBUG is not True:
             logger.remove()
             logger.add(sys.stderr, level="WARNING")
+
+        self.cluster_arn = cluster_arn

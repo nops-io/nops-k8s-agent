@@ -32,6 +32,7 @@ class Command(BaseCommand):
 
         s3_bucket = settings.AWS_S3_BUCKET
         s3_prefix = settings.AWS_S3_PREFIX
+        cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
         now = dt.datetime.now()
         tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
         for klass in collect_klass:

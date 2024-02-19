@@ -35,7 +35,7 @@ class KubeMetadata:
         return status
 
     def cluster_id(self) -> str:
-        return settings.NOPS_K8S_AGENT_CLUSTER_ID
+        return settings.NOPS_K8S_AGENT_CLUSTER_ARN
 
     def list_node(self) -> Iterable[V1Node]:
         # TODO CACHE HERE

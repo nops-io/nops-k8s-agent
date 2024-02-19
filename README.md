@@ -74,7 +74,7 @@ data:
 There are required variables:
 
 - APP_PROMETHEUS_SERVER_ENDPOINT - depends on your prometheus stack installation 
-- APP_NOPS_K8S_AGENT_CLUSTER_ID - needs to match with your cluster id 
+- APP_NOPS_K8S_AGENT_CLUSTER_ARN - needs to match with your cluster arn
 - APP_AWS_S3_BUCKET
 - APP_AWS_S3_PREFIX
 

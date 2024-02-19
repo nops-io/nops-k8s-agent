@@ -43,7 +43,7 @@ class KubeMetrics(object):
 
     @property
     def cluster_id(self) -> str:
-        return settings.NOPS_K8S_AGENT_CLUSTER_ID
+        return settings.NOPS_K8S_AGENT_CLUSTER_ARN
 
     @staticmethod
     def build_metrics_query(template: str, input_params: dict[Any, Any]) -> str:
