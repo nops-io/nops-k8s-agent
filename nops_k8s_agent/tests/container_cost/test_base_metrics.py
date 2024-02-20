@@ -11,7 +11,7 @@ from nops_k8s_agent.container_cost.base_labels import BaseLabels
 
 @pytest.fixture
 def base_labels_instance():
-    with patch("nops_k8s_agent.container_cost.base_prom.PrometheusConnect", MagicMock()):
+    with patch("nops_k8s_agent.container_cost.base_prom.BaseProm", MagicMock()):
         yield BaseLabels()
 
 
