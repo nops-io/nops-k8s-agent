@@ -1,10 +1,8 @@
-{{ if ne .Values.env_variables.APP_ENV "ci" }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-high
 spec:
-  schedule: "{{ .Values.cronjob.schedule }}"
   jobTemplate:
     spec:
       template:
@@ -49,4 +47,3 @@ spec:
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
             command: ["python", "manage.py", "dumptos3"]
           restartPolicy: Never
-{{ end }}
