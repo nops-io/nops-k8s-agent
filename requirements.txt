@@ -9,3 +9,4 @@ django-extensions
 ipython
 requests-futures
 boto3
+pyfakefs
