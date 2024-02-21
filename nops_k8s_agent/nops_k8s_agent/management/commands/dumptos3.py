@@ -22,8 +22,8 @@ class Command(BaseCommand):
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
 
-    def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, now):
-        tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
+    def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
+        tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = [
             BaseLabels,
@@ -39,9 +39,11 @@ class Command(BaseCommand):
             try:
                 instance = klass(cluster_arn=cluster_arn)
                 FILE_PREFIX = klass.FILE_PREFIX
-                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/cluster_name={cluster_name}"
+                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
                 tmp_file = f"{tmp_path}{klass.FILENAME}"
-                instance.convert_to_table_and_save(period="last_hour", step="5m", filename=tmp_file)
+                instance.convert_to_table_and_save(
+                    period="last_hour", current_time=start_time, step="5m", filename=tmp_file
+                )
                 s3_key = f"{path}/{klass.FILENAME}"
                 s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
                 self.stdout.write(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")

@@ -41,16 +41,19 @@ class BaseMetrics(BaseProm):
                 metrics[metric_name] = response
         return metrics
 
-    def convert_to_table_and_save(self, period: str, step: str = "5m", filename: str = FILENAME) -> None:
+    def convert_to_table_and_save(
+        self, period: str, current_time: datetime = None, step: str = "5m", filename: str = FILENAME
+    ) -> None:
         now = datetime.now(pytz.utc)
+        if current_time is None:
+            current_time = now
         if period == "last_hour":
-            start_time = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            start_time = current_time.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
             end_time = start_time + timedelta(hours=1) - timedelta(seconds=1)
         elif period == "last_day":
-            start_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+            start_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
             end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
         all_metrics_data = self.get_all_metrics(start_time=start_time, end_time=end_time, step=step)
-        now = datetime.now(pytz.utc)
 
         # Prepare data structure for PyArrow
         # Initialize lists for each column
