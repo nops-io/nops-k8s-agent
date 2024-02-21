@@ -12,7 +12,7 @@ from nops_k8s_agent.container_cost.base_labels import BaseLabels
 @pytest.fixture
 def base_labels_instance():
     with patch("nops_k8s_agent.container_cost.base_prom.BaseProm", MagicMock()):
-        yield BaseLabels()
+        yield BaseLabels(cluster_arn="arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
 
 
 def test_get_metrics_success(base_labels_instance):

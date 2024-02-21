@@ -2,7 +2,7 @@ from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
 
 
 def test_custom_metrics_function_with_varied_data():
-    node_metadata = NodeMetadata()
+    node_metadata = NodeMetadata(cluster_arn="arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
 
     varied_data_cases = [
         {

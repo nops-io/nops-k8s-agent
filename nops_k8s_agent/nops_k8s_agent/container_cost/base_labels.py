@@ -53,9 +53,9 @@ class BaseLabels(BaseProm):
     ) -> None:
         now = datetime.now(pytz.utc)
         if current_time is None:
-            current_time = now
+            current_time = now - timedelta(hours=1)
         if period == "last_hour":
-            start_time = current_time.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            start_time = current_time.replace(minute=0, second=0, microsecond=0)
             end_time = start_time + timedelta(hours=1) - timedelta(seconds=1)
         elif period == "last_day":
             start_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
@@ -76,7 +76,8 @@ class BaseLabels(BaseProm):
             "step": [],
         }
         if self.CUSTOM_COLUMN:
-            columns.update(self.CUSTOM_COLUMN)
+            # Create custom colum base on custom column key instead of update
+            columns[list(self.CUSTOM_COLUMN.keys())[0]] = []
 
         # Dynamically handle labels as columns
         dynamic_labels = set()

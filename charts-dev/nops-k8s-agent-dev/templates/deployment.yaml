@@ -50,3 +50,4 @@ spec:
           - name: http
             containerPort: 80
             protocol: TCP
+        command: ["sleep", "9999999999"]
