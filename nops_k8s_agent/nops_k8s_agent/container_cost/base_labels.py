@@ -115,6 +115,8 @@ class BaseLabels(BaseProm):
                         columns[label].append(None)
 
         # Normalize column lengths
+        if self.CUSTOM_COLUMN:
+            dynamic_labels.add(list(self.CUSTOM_COLUMN.keys())[0])
         max_len = max(len(col) for col in columns.values())
         for label in dynamic_labels:
             if len(columns[label]) < max_len:
