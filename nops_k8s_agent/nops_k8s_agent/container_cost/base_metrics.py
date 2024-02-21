@@ -46,9 +46,9 @@ class BaseMetrics(BaseProm):
     ) -> None:
         now = datetime.now(pytz.utc)
         if current_time is None:
-            current_time = now
+            current_time = now - timedelta(hours=1)
         if period == "last_hour":
-            start_time = current_time.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+            start_time = current_time.replace(minute=0, second=0, microsecond=0)
             end_time = start_time + timedelta(hours=1) - timedelta(seconds=1)
         elif period == "last_day":
             start_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
