@@ -24,7 +24,7 @@ class Command(BaseCommand):
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, now):
         tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
-        cluster_name = cluster_arn.split(":")[-1] if cluster_arn else "unknown_cluster"
+        cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = [
             BaseLabels,
             DeploymentMetrics,

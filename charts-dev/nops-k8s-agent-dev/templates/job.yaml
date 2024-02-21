@@ -1,6 +1,6 @@
 {{ if ne .Values.env_variables.APP_ENV "ci" }}
 apiVersion: batch/v1
-kind: CronJob
+kind: Job
 metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-high
 spec:
@@ -47,6 +47,6 @@ spec:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["python", "manage.py", "dumptos3", "--start-date", "", "--end-date", ""]
+            command: ["python", "manage.py", "dumptos3"]
           restartPolicy: Never
 {{ end }}
