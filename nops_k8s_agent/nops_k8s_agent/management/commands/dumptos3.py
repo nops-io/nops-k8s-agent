@@ -35,11 +35,12 @@ class Command(BaseCommand):
         cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
         now = dt.datetime.now()
         tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
+        cluster_name = cluster_arn.split(":")[-1] if cluster_arn else "unknown_cluster"
         for klass in collect_klass:
             try:
                 instance = klass(cluster_arn=cluster_arn)
                 FILE_PREFIX = klass.FILE_PREFIX
-                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}"
+                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/cluster_name={cluster_name}"
                 tmp_file = f"{tmp_path}{klass.FILENAME}"
                 instance.convert_to_table_and_save(period="last_hour", step="5m", filename=tmp_file)
                 s3_key = f"{path}/{klass.FILENAME}"
