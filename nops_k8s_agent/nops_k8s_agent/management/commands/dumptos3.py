@@ -17,7 +17,14 @@ from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
 
 
 class Command(BaseCommand):
-    def handle(self, *args, **options):
+    def add_arguments(self, parser):
+        # Optional command-line arguments for start and end date
+        parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
+        parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
+
+    def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, now):
+        tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
+        cluster_name = cluster_arn.split(":")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = [
             BaseLabels,
             DeploymentMetrics,
@@ -28,14 +35,6 @@ class Command(BaseCommand):
             PodMetrics,
             NodeMetadata,
         ]
-        s3 = boto3.client("s3")
-
-        s3_bucket = settings.AWS_S3_BUCKET
-        s3_prefix = settings.AWS_S3_PREFIX
-        cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
-        now = dt.datetime.now()
-        tmp_path = f"/tmp/year={now.year}/month={now.month}/day={now.day}/hour={now.hour}/"
-        cluster_name = cluster_arn.split(":")[-1] if cluster_arn else "unknown_cluster"
         for klass in collect_klass:
             try:
                 instance = klass(cluster_arn=cluster_arn)
@@ -54,3 +53,27 @@ class Command(BaseCommand):
                     os.remove(tmp_file)
                 except Exception as e:
                     self.stderr.write(f"Error when removing {tmp_file} {str(e)}")
+
+    def handle(self, *args, **options):
+        s3 = boto3.client("s3")
+        s3_bucket = settings.AWS_S3_BUCKET
+        s3_prefix = settings.AWS_S3_PREFIX
+        cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
+        start_date_str = options["start_date"]
+        end_date_str = options["end_date"]
+
+        if start_date_str and end_date_str:
+            # Parse the provided start and end date
+            start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d")
+            end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d") + dt.timedelta(
+                days=1
+            )  # Include the end date in the range
+            for single_date in (start_date + dt.timedelta(n) for n in range(int((end_date - start_date).days))):
+                for hour in range(24):  # Iterate through each hour of the day
+                    current_time = single_date + dt.timedelta(hours=hour)
+                    self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, current_time)
+
+        else:
+            # Default to the previous hour
+            now = dt.datetime.now()
+            self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
