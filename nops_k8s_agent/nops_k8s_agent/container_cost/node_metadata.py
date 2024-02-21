@@ -12,11 +12,14 @@ class NodeMetadata(BaseLabels):
     CUSTOM_COLUMN = {"instance_id": []}
 
     def custom_metrics_function(self, data: dict) -> str:
-        provider_id = data.get("metric", {}).get("provider_id", "")
-        parts = provider_id.split("/")
-        instance_id = ""
-        if len(parts) > 1:
-            instance_id = parts[-1]  # Return the last part for EC2 or the first part for Fargate
-        return instance_id
+        try:
+            provider_id = data.get("metric", {}).get("provider_id", "")
+            parts = provider_id.split("/")
+            instance_id = ""
+            if len(parts) > 1:
+                instance_id = parts[-1]  # Return the last part for EC2 or the first part for Fargate
+            return instance_id
+        except Exception:
+            return ""
 
     CUSTOM_METRICS_FUNCTION = custom_metrics_function
