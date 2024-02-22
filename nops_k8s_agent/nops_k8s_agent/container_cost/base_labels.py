@@ -84,10 +84,10 @@ class BaseLabels(BaseProm):
 
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
-                columns["cluster_arn"].append(self.cluster_arn)
-                metric_labels = data["metric"]
                 if "values" not in data or len(data["values"]) == 0:
                     continue
+                columns["cluster_arn"].append(self.cluster_arn)
+                metric_labels = data["metric"]
                 columns["metric_name"].append(metric_name)
                 columns["start_time"].append(int(start_time.timestamp()))
                 avg_value = sum([float(x[1]) for x in data["values"]]) / len(data["values"])
@@ -114,7 +114,6 @@ class BaseLabels(BaseProm):
                 for label in dynamic_labels:
                     if label not in metric_labels:
                         columns[label].append(None)
-
         # Normalize column lengths
         if self.CUSTOM_COLUMN:
             dynamic_labels.add(list(self.CUSTOM_COLUMN.keys())[0])
