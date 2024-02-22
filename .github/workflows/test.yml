@@ -6,6 +6,9 @@ jobs:
   build:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
