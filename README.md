@@ -1,39 +1,111 @@
-## Deployment
+
+## Prerequisites
+
+* nOps account: You'll need a nOps account to use this agent.
+
+### Crete namespace
+
+* Kubernetes namespace: Create a dedicated namespace for the agent.
 
 
-### Get the repository
-
-As the current version using helm chart for deployment. You need to clone this repo first to get chart files.
-
-
-### Crete name space
-
+```
     kubectl create namespace nops-k8s-agent
     kubectl config set-context --current --namespace=nops-k8s-agent
+```
 
 
 ### Deploy Prometheus
 
-You can use your own Prometheus instance or launching your nops-k8s-agent namespace
+Deploy Prometheus in your cluster, or have an accessible Prometheus instance
 
-    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-    helm install prometheus prometheus-community/kube-prometheus-stack
+```
+    helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
+      --namespace prometheus-system --create-namespace \
+      --set prometheus-pushgateway.enabled=false \
+      --set alertmanager.enabled=false
+```
+
+
+### Create S3 Bucket and IAM Access Key
+
+* Create an S3 bucket for container cost export data.
+* Grant the nops-k8s-agent write permissions to this bucket using an IAM Access Key or a Service Role.
+
+### Secret Creation
+
+Create Secret "nops-k8s-agent" with following values in it.
+* aws_access_key_id: IAM Access Key ID
+* aws_secret_access_key: IAM Access Key Secret
+
+
+Example Secret Manifest Reference
+```
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: nops-k8s-agent
+  namespace: <same as nops-k8s-agent installation>
+data:
+  aws_access_key_id: MWYyZDFlMmU2N2Rm 
+  aws_secret_access_key: MWYyZDFlMmU2N2Rm
+```
 
 ### Configure values.yaml
 
 There are required variables:
 
-- APP_PROMETHEUS_SERVER_ENDPOINT - depends on your prometheus stack installation 
-- APP_NOPS_K8S_AGENT_CLUSTER_ID - needs to match with your cluster id 
-- APP_NOPS_K8S_COLLECTOR_API_KEY - Currently no support signature verification https://docs.nops.io/en/articles/5955764-getting-started-with-the-nops-developer-api
-- APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER - The AWS account number of which is configured within nOps
+- APP_PROMETHEUS_SERVER_ENDPOINT - Prometheus server endpoint
+- APP_NOPS_K8S_AGENT_CLUSTER_ARN - needs to match with your cluster arn (starting with arn ending with cluster name)
+- APP_AWS_S3_BUCKET - S3 Bucket that this service has write permission
+- APP_AWS_S3_PREFIX - S3 Prefix path include trailing slash
+- NOPS_K8S_AGENT_PROM_TOKEN - (Optional) provide if your prometheus is protected by token
 
-You can use your own Chart values file or using our example setup_values script to fetch variable_env from Parameter Store SSM (Not encrypted)
 
-    # Patch values for env_variables using SSM store.
-    python3 deploy/setup_values.py $CI_ENVIRONMENT_SLUG charts/nops-k8s-agent/values.yaml > /tmp/values.yaml
+Example configuration
+```
+APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-server.prometheus-system.svc.cluster.local:80"
+APP_NOPS_K8S_AGENT_CLUSTER_ARN: "arn:aws:eks:us-west-2:12345679012:cluster/nOps-Testing-EKS"
+APP_AWS_S3_BUCKET: "container-cost-export-customer-abc"
+APP_AWS_S3_PREFIX: "test-container-cost/"
+```
+
+
+## Deployment
+
+There are 2 options for deployment
+
+### Deploy Agent From Source Code
+
+Using helm chart for deployment. You need to clone this repo first to get chart files.
+
+Start the helm chart
+
+    # Upgrade chart.
+    helm \
+      upgrade -i nops-k8s-agent ./charts/nops-k8s-agent \
+      -f /tmp/values.yaml \
+      --namespace nops-k8s-agent \
+      --set image.repository=ghcr.io/nops-io/nops-k8s-agent \
+      --set image.tag=deploy \
+      --set env_variables.APP_ENV=live \
+      --wait --timeout=300s
+
+
 
 ### Deploy Agent via Helm repo
 
     helm repo add nops-k8s-agent https://nops-io.github.io/nops-k8s-agent
     helm install -f values.yaml nops-k8s-agent
+
+
+## Configure nOps Integration
+
+
+* Log into your nOps account.
+* Go to Settings -> Integrations -> Container Cost.
+* Configure your S3 bucket and permissions.
+
+Configure the S3 bucket for that account. If you have multiple EKS clusters please use the same bucket.
+Configure the read permission on the bucket for the IAM Role that we used on previous setup. Or click to install new Cloudformation Stack to provide the permission automatically.
+
