@@ -16,14 +16,14 @@ load('ext://helm_resource', 'helm_resource', 'helm_repo')
 #         allow_parallel=True
 #    )
 # else:
-#    local_resource(
-#         "test-everything",
-#         "make test",
-#         deps=["./nops-k8s-agent/"],
-#         trigger_mode=TRIGGER_MODE_MANUAL,
-#         resource_deps=[service_name, "prometheus"],
-#         allow_parallel=True
-#     )
+local_resource(
+    "test-everything",
+    "make test",
+    deps=["./nops-k8s-agent/"],
+    trigger_mode=TRIGGER_MODE_MANUAL,
+    resource_deps=[service_name],
+    allow_parallel=True
+)
 
 
 # Build repo:
