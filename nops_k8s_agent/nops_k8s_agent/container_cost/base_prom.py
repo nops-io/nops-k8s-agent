@@ -1,4 +1,6 @@
 import sys
+from datetime import datetime
+from typing import Any
 
 from django.conf import settings
 
@@ -21,3 +23,11 @@ class BaseProm:
             logger.add(sys.stderr, level="WARNING")
 
         self.cluster_arn = cluster_arn
+
+    def get_metrics(self, query: str, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
+        try:
+            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
+            return response
+        except Exception as e:
+            logger.error(f"Error in get_metrics: {e}")
+            return None
