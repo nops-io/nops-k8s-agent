@@ -25,18 +25,6 @@ class BaseMetrics(BaseProm):
         query = f"avg(avg_over_time({metric_name}[{step}])) by ({group_by_str})"
         return query
 
-    def get_all_metrics(self, start_time: datetime, end_time: datetime, step: str) -> dict:
-        # This function to get all metrics from prometheus
-        metrics = defaultdict(list)
-        for metric_name in self.list_of_metrics.keys():
-            query = self.build_query(metric_name, step)
-            response = self.get_metrics(
-                query=query, start_time=start_time, end_time=end_time, metric_name=metric_name, step=step
-            )
-            if response:
-                metrics[metric_name] = response
-        return metrics
-
     def convert_to_table_and_save(
         self, period: str, current_time: datetime = None, step: str = "5m", filename: str = FILENAME
     ) -> None:
