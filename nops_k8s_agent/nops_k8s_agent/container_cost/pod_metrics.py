@@ -2,8 +2,6 @@ from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 
 
 class PodMetrics(BaseMetrics):
-    # This class to get pod metrics from prometheus and put it in dictionary
-    # List of metrics:
     list_of_metrics = {
         "kube_pod_owner": ["pod", "owner_name", "owner_kind", "namespace", "owner_is_controller", "uid"],
         # kube_pod_labels empty now
