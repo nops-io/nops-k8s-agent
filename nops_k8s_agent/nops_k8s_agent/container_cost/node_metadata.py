@@ -2,8 +2,6 @@ from nops_k8s_agent.container_cost.base_labels import BaseLabels
 
 
 class NodeMetadata(BaseLabels):
-    # This class to get pod metrics from prometheus and put it in dictionary
-    # List of metrics:
     list_of_metrics = {
         "kube_node_info": [],
     }
