@@ -2,97 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}-low
-spec:
-  schedule: "{{ .Values.cronjob.schedule_low }}"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
-          {{ if .Values.serviceAccount.create }}
-          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
-          {{ else }}
-          serviceAccountName: default
-          {{ end }}
-          containers:
-          - name: {{ .Chart.Name }}
-            env:
-              - name: APP_APP_VERSION
-                value: "{{ .Chart.AppVersion }}"
-              - name: APP_CHART_VERSION
-                value: "{{ .Chart.Version }}"
-              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
-                valueFrom:
-                  secretKeyRef:
-                    name: nops-k8s-agent
-                    key: nops_api_key
-              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
-                valueFrom:
-                  secretKeyRef:
-                    name: nops-k8s-agent
-                    key: aws_account_id
-            envFrom:
-              - configMapRef:
-                  name: {{ .Chart.Name }}-configmap
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-            imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["/bin/sh"]
-            args: ["/workspace/run_jobs_low.sh"]
-          restartPolicy: Never
-{{ end }}
----
-{{ if ne .Values.env_variables.APP_ENV "ci" }}
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}-medium
-spec:
-  schedule: "{{ .Values.cronjob.schedule_medium }}"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
-          {{ if .Values.serviceAccount.create }}
-          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
-          {{ else }}
-          serviceAccountName: default
-          {{ end }}
-          containers:
-          - name: {{ .Chart.Name }}
-            env:
-              - name: APP_APP_VERSION
-                value: "{{ .Chart.AppVersion }}"
-              - name: APP_CHART_VERSION
-                value: "{{ .Chart.Version }}"
-              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
-                valueFrom:
-                  secretKeyRef:
-                    name: nops-k8s-agent
-                    key: nops_api_key
-              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
-                valueFrom:
-                  secretKeyRef:
-                    name: nops-k8s-agent
-                    key: aws_account_id
-            envFrom:
-              - configMapRef:
-                  name: {{ .Chart.Name }}-configmap
-            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-            imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["/bin/sh"]
-            args: ["/workspace/run_jobs_medium.sh"]
-          restartPolicy: Never
-{{ end }}
----
-{{ if ne .Values.env_variables.APP_ENV "ci" }}
-apiVersion: batch/v1
-kind: CronJob
-metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-high
 spec:
-  schedule: "{{ .Values.cronjob.schedule_high }}"
+  schedule: "{{ .Values.cronjob.schedule }}"
   jobTemplate:
     spec:
       template:
@@ -110,22 +22,21 @@ spec:
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
-              - name: APP_NOPS_K8S_COLLECTOR_API_KEY
+              - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
                     name: nops-k8s-agent
-                    key: nops_api_key
-              - name: APP_NOPS_K8S_COLLECTOR_AWS_ACCOUNT_NUMBER
+                    key: aws_access_key_id
+              - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
                     name: nops-k8s-agent
-                    key: aws_account_id
+                    key: aws_secret_access_key
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["/bin/sh"]
-            args: ["/workspace/run_jobs_high.sh"]
+            command: ["python", "manage.py", "dumptos3", "--start-date", "", "--end-date", ""]
           restartPolicy: Never
 {{ end }}

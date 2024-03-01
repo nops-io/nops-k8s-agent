@@ -22,6 +22,16 @@ spec:
             value: "{{ .Chart.AppVersion }}"
           - name: APP_CHART_VERSION
             value: "{{ .Chart.Version }}"
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: nops-k8s-agent
+                key: aws_access_key_id
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: nops-k8s-agent
+                key: aws_secret_access_key
         envFrom:
         - configMapRef:
               name: {{ .Chart.Name }}-configmap
@@ -30,3 +40,4 @@ spec:
           - name: http
             containerPort: 80
             protocol: TCP
+        command: ["sleep", "9999999999"]

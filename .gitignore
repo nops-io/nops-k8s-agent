@@ -83,3 +83,5 @@ monkeytype.sqlite3
 
 profile*.html
 index.nginx-debian.html
+*.swn
+charts-dev/nops-k8s-agent-dev/values.yaml
