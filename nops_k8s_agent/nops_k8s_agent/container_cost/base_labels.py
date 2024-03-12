@@ -125,9 +125,7 @@ class BaseLabels(BaseProm):
         # Create PyArrow arrays for each column and build the table
         arrays = {k: pa.array(v, pa.string() if k in dynamic_labels else None) for k, v in columns.items()}
         table = pa.Table.from_pydict(arrays)
-        directory = os.path.dirname(filename)
-
-        # Ensure the directory exists
-        os.makedirs(directory, exist_ok=True)
-
-        pq.write_table(table, filename)
+        if table.num_rows > 0:
+            directory = os.path.dirname(filename)
+            os.makedirs(directory, exist_ok=True)
+            pq.write_table(table, filename)

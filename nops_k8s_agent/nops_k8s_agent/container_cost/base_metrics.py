@@ -116,10 +116,7 @@ class BaseMetrics(BaseProm):
 
         # Create a PyArrow Table
         table = pa.Table.from_pydict(arrays)
-        directory = os.path.dirname(filename)
-
-        # Ensure the directory exists
-        os.makedirs(directory, exist_ok=True)
-
-        # Write the table to a Parquet file
-        pq.write_table(table, filename)
+        if table.num_rows > 0:
+            directory = os.path.dirname(filename)
+            os.makedirs(directory, exist_ok=True)
+            pq.write_table(table, filename)
