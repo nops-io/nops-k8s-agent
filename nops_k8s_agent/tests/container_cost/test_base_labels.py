@@ -218,6 +218,7 @@ def test_convert_to_table_and_save_with_custom_columns(
     table = args[0]
 
     assert "labels" in table.column_names
+    assert type(table.column("labels")[0].as_py()) == str
     assert json.loads(str(table.column("labels")[0])) == labels_dict
     assert "custom_metric" in table.column_names
     assert table.column("custom_metric").to_pylist()[0] == "custom_value"
