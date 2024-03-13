@@ -74,14 +74,11 @@ class BaseLabels(BaseProm):
             "count_value": [],
             "period": [],
             "step": [],
+            "labels": [],
         }
         if self.CUSTOM_COLUMN:
             # Create custom colum base on custom column key instead of update
             columns[list(self.CUSTOM_COLUMN.keys())[0]] = []
-
-        # Dynamically handle labels as columns
-        dynamic_labels = set()
-
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
                 if "values" not in data or len(data["values"]) == 0:
@@ -99,31 +96,12 @@ class BaseLabels(BaseProm):
                 columns["step"].append(step)
                 columns["created_at"].append(now.timestamp())
                 columns["period"].append(period)
+                columns["labels"].append(json.dumps(metric_labels))
                 if self.CUSTOM_METRICS_FUNCTION and callable(self.CUSTOM_METRICS_FUNCTION) and self.CUSTOM_COLUMN:
                     custom_metrics = self.CUSTOM_METRICS_FUNCTION(data)
                     columns[list(self.CUSTOM_COLUMN.keys())[0]].append(custom_metrics)
 
-                # Add/update dynamic labels for this metric
-                for label, label_value in metric_labels.items():
-                    if label not in columns:
-                        columns[label] = [None] * (len(columns["metric_name"]) - 1)  # Initialize with Nones
-                        dynamic_labels.add(label)
-                    columns[label].append(label_value)
-
-                # Ensure all dynamic label columns are of equal length to other columns
-                for label in dynamic_labels:
-                    if label not in metric_labels:
-                        columns[label].append(None)
-        # Normalize column lengths
-        if self.CUSTOM_COLUMN:
-            dynamic_labels.add(list(self.CUSTOM_COLUMN.keys())[0])
-        max_len = max(len(col) for col in columns.values())
-        for label in dynamic_labels:
-            if len(columns[label]) < max_len:
-                columns[label].extend([None] * (max_len - len(columns[label])))
-
-        # Create PyArrow arrays for each column and build the table
-        arrays = {k: pa.array(v, pa.string() if k in dynamic_labels else None) for k, v in columns.items()}
+        arrays = {k: pa.array(v) for k, v in columns.items()}
         table = pa.Table.from_pydict(arrays)
         if table.num_rows > 0:
             directory = os.path.dirname(filename)

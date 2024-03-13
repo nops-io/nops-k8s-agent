@@ -123,7 +123,7 @@ def test_get_all_metrics_no_data(base_labels_instance):
 
 def test_handling_custom_columns_and_metrics(base_labels_instance):
     # Setup custom column and metric function
-    base_labels_instance.CUSTOM_COLUMN = {"custom_column": []}
+    base_labels_instance.CUSTOM_COLUMN = {"custom_column": ["custom_column_1"]}
     base_labels_instance.CUSTOM_METRICS_FUNCTION = MagicMock(return_value="custom_metric_value")
 
     # Mock datetime and os.makedirs, pq.write_table
@@ -153,41 +153,10 @@ def test_handling_custom_columns_and_metrics(base_labels_instance):
         base_labels_instance.CUSTOM_METRICS_FUNCTION.assert_called()
         args, _ = mock_write_table.call_args
         table = args[0]
+        assert "labels" in table.column_names
         assert "custom_column" in table.column_names, "Custom column should be in the table"
 
-
-def test_dynamic_label_handling_and_array_normalization(base_labels_instance):
-    # Mock datetime, os.makedirs, and pq.write_table
-    with patch("nops_k8s_agent.container_cost.base_labels.datetime") as mock_datetime, patch(
-        "nops_k8s_agent.container_cost.base_labels.os.makedirs"
-    ), patch("nops_k8s_agent.container_cost.base_labels.pq.write_table") as mock_write_table:
-
-        mock_datetime.now.return_value = datetime(2023, 1, 1)
-        mock_datetime.utcnow.return_value = datetime(2023, 1, 1)
-
-        # Mock get_all_metrics to return sample data with varying labels
-        base_labels_instance.get_all_metrics = MagicMock(
-            return_value={
-                "kube_pod_labels": [
-                    {"metric": {"__name__": "kube_pod_labels", "label1": "value1"}, "values": [[1609459200.0, "1"]]},
-                    {"metric": {"__name__": "kube_pod_labels", "label2": "value2"}, "values": [[1609459200.0, "2"]]},
-                ]
-            }
-        )
-
-        # Perform the test
-        base_labels_instance.convert_to_table_and_save(period="last_hour", filename="test_dynamic_labels.parquet")
-
-        # Verify dynamic labels are correctly handled
-        args, _ = mock_write_table.call_args
-        table = args[0]
-        assert (
-            "label1" in table.column_names and "label2" in table.column_names
-        ), "Dynamic labels should be added to the table"
-        for column in ["label1", "label2"]:
-            assert table.column(column).null_count > 0, "Columns should have nulls for missing labels"
-
-
+        assert table.column("custom_column").length() > 0
 
 
 def test_parquet_file_writing_and_directory_handling_non_empty_files(base_labels_instance):
@@ -216,16 +185,13 @@ def test_parquet_file_writing_and_directory_handling_non_empty_files(base_labels
         # Verify dynamic labels are correctly handled
         args, _ = mock_write_table.call_args
         table = args[0]
-        assert (
-            "label1" in table.column_names and "label2" in table.column_names
-        ), "Dynamic labels should be added to the table"
-        for column in ["label1", "label2"]:
-            assert table.column(column).null_count > 0, "Columns should have nulls for missing labels"
-                # Verify directory creation and file writing
+        assert "labels" in table.column_names
+
         mock_makedirs.assert_called_with(os.path.dirname(test_filename), exist_ok=True)
         mock_write_table.assert_called_once()
         args, _ = mock_write_table.call_args
         assert args[1] == test_filename, "Parquet file should be written to the correct path"
+
 
 def test_parquet_file_writing_and_directory_handling_empty_files(base_labels_instance):
     test_filename = "test_output/test_parquet_file.parquet"
@@ -247,4 +213,3 @@ def test_parquet_file_writing_and_directory_handling_empty_files(base_labels_ins
         # Verify that empty files are not created
         mock_makedirs.assert_not_called()
         mock_write_table.assert_not_called()
-
