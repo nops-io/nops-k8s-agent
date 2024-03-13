@@ -26,6 +26,7 @@ class BaseLabels(BaseProm):
     FILE_PREFIX = "base_labels"
     FILENAME = "base_labels_0.parquet"
     CUSTOM_METRICS_FUNCTION = None
+    CUSTOM_COLUMN = None
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus
@@ -75,6 +76,9 @@ class BaseLabels(BaseProm):
             "step": [],
             "labels": [],
         }
+        if self.CUSTOM_COLUMN:
+            # Create custom colum base on custom column key instead of update
+            columns[list(self.CUSTOM_COLUMN.keys())[0]] = []
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
                 if "values" not in data or len(data["values"]) == 0:
@@ -93,8 +97,10 @@ class BaseLabels(BaseProm):
                 columns["created_at"].append(now.timestamp())
                 columns["period"].append(period)
                 columns["labels"].append(json.dumps(metric_labels))
+                if self.CUSTOM_METRICS_FUNCTION and callable(self.CUSTOM_METRICS_FUNCTION) and self.CUSTOM_COLUMN:
+                    custom_metrics = self.CUSTOM_METRICS_FUNCTION(data)
+                    columns[list(self.CUSTOM_COLUMN.keys())[0]].append(custom_metrics)
 
-        # Create PyArrow arrays for each column and build the table
         arrays = {k: pa.array(v) for k, v in columns.items()}
         table = pa.Table.from_pydict(arrays)
         if table.num_rows > 0:

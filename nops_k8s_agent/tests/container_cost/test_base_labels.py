@@ -1,6 +1,6 @@
+import json
 from datetime import datetime
 from datetime import timedelta
-import json
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -170,17 +170,16 @@ def test_convert_to_table_and_save_last_hour(base_labels, mock_os_makedirs, mock
     # Check if the period calculation for "last_hour" was correct
     assert table.column("period").to_pylist()[0] == "last_hour"
 
+
 def test_convert_to_table_for_no_entris(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
-    base_labels.get_all_metrics = MagicMock(
-        return_value={}
-    )
+    base_labels.get_all_metrics = MagicMock(return_value={})
 
     base_labels.convert_to_table_and_save("last_hour")
 
     # Make sure no empty files will be created
     mock_os_makedirs.assert_not_called()
     mock_pq_write_table.assert_not_called()
-    
+
 
 def test_convert_to_table_and_save_last_day(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
     base_labels.get_all_metrics = MagicMock(
@@ -220,3 +219,5 @@ def test_convert_to_table_and_save_with_custom_columns(
 
     assert "labels" in table.column_names
     assert json.loads(str(table.column("labels")[0])) == labels_dict
+    assert "custom_metric" in table.column_names
+    assert table.column("custom_metric").to_pylist()[0] == "custom_value"

@@ -123,7 +123,7 @@ def test_get_all_metrics_no_data(base_labels_instance):
 
 def test_handling_custom_columns_and_metrics(base_labels_instance):
     # Setup custom column and metric function
-    base_labels_instance.CUSTOM_COLUMN = {"custom_column": []}
+    base_labels_instance.CUSTOM_COLUMN = {"custom_column": ["custom_column_1"]}
     base_labels_instance.CUSTOM_METRICS_FUNCTION = MagicMock(return_value="custom_metric_value")
 
     # Mock datetime and os.makedirs, pq.write_table
@@ -150,10 +150,13 @@ def test_handling_custom_columns_and_metrics(base_labels_instance):
         base_labels_instance.convert_to_table_and_save(period="last_hour", filename="test_custom.parquet")
 
         # Assert CUSTOM_METRICS_FUNCTION was called and custom column added to table
+        base_labels_instance.CUSTOM_METRICS_FUNCTION.assert_called()
         args, _ = mock_write_table.call_args
         table = args[0]
         assert "labels" in table.column_names
+        assert "custom_column" in table.column_names, "Custom column should be in the table"
 
+        assert table.column("custom_column").length() > 0
 
 
 def test_parquet_file_writing_and_directory_handling_non_empty_files(base_labels_instance):
@@ -183,11 +186,12 @@ def test_parquet_file_writing_and_directory_handling_non_empty_files(base_labels
         args, _ = mock_write_table.call_args
         table = args[0]
         assert "labels" in table.column_names
-       
+
         mock_makedirs.assert_called_with(os.path.dirname(test_filename), exist_ok=True)
         mock_write_table.assert_called_once()
         args, _ = mock_write_table.call_args
         assert args[1] == test_filename, "Parquet file should be written to the correct path"
+
 
 def test_parquet_file_writing_and_directory_handling_empty_files(base_labels_instance):
     test_filename = "test_output/test_parquet_file.parquet"
@@ -209,4 +213,3 @@ def test_parquet_file_writing_and_directory_handling_empty_files(base_labels_ins
         # Verify that empty files are not created
         mock_makedirs.assert_not_called()
         mock_write_table.assert_not_called()
-
