@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+import json
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -204,8 +205,10 @@ def test_convert_to_table_and_save_with_custom_columns(
     base_labels.CUSTOM_COLUMN = {"custom_metric": []}
     base_labels.CUSTOM_METRICS_FUNCTION = lambda data: "custom_value"
 
+    labels_dict = {"annotation": "annot1"}
+
     base_labels.get_all_metrics = MagicMock(
-        return_value={"kube_pod_annotations": [{"metric": {"annotation": "annot1"}, "values": [[1234567890, "300"]]}]}
+        return_value={"kube_pod_annotations": [{"metric": labels_dict, "values": [[1234567890, "300"]]}]}
     )
 
     base_labels.convert_to_table_and_save("last_hour")
@@ -215,5 +218,5 @@ def test_convert_to_table_and_save_with_custom_columns(
     args, kwargs = mock_pq_write_table.call_args
     table = args[0]
 
-    assert "custom_metric" in table.column_names
-    assert table.column("custom_metric").to_pylist()[0] == "custom_value"
+    assert "labels" in table.column_names
+    assert json.loads(str(table.column("labels")[0])) == labels_dict
