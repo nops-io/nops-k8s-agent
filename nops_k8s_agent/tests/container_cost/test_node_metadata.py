@@ -4,8 +4,6 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-
-# from nops_k8s_agent.container_cost.base_labels import BaseLabels
 import pytz
 
 from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
