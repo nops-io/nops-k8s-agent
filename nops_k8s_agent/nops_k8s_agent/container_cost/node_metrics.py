@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class NodeMetrics(BaseMetrics):
@@ -22,4 +23,4 @@ class NodeMetrics(BaseMetrics):
         ],
     }
     FILE_PREFIX = "node_metrics"
-    FILENAME = "node_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metrics_0.parquet"

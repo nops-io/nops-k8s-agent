@@ -11,6 +11,7 @@ import pytz
 from loguru import logger
 
 from nops_k8s_agent.container_cost.base_prom import BaseProm
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class BaseLabels(BaseProm):
@@ -24,7 +25,7 @@ class BaseLabels(BaseProm):
         "kube_pod_annotations": [],
     }
     FILE_PREFIX = "base_labels"
-    FILENAME = "base_labels_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_base_labels_0.parquet"
     CUSTOM_METRICS_FUNCTION = None
     CUSTOM_COLUMN = None
 
