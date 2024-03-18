@@ -86,15 +86,13 @@ def test_convert_to_table_and_save_with_custom_columns(
     node_metadata.CUSTOM_COLUMN = {"custom_metric": []}
     node_metadata.CUSTOM_METRICS_FUNCTION = lambda data: "custom_value"
 
-    POD_VALUE = "pod_value"
     NODE_VALUE = "node_value"
     NODE_VALUE_1 = f"{NODE_VALUE}_1"
     NAMESPACE_VALUE = "namespace_value"
     labels_dict = {
         "metric": {
-            "__name__": "kube_pod_labels",
+            "__name__": "kube_node_info",
             "custom_label": "label_value",
-            "pod": POD_VALUE,
             "node": NODE_VALUE,
             "namespace": NAMESPACE_VALUE,
         },
@@ -103,16 +101,15 @@ def test_convert_to_table_and_save_with_custom_columns(
 
     labels_dict_with_none = {
         "metric": {
-            "__name__": "kube_pod_labels",
+            "__name__": "kube_node_info",
             "custom_label": "label_value",
-            "pod": None,
             "node": NODE_VALUE_1,
             "namespace": None,
         },
         "values": [[1609459200.0, "1"]],
     }
 
-    node_metadata.get_all_metrics = MagicMock(return_value={"kube_pod_labels": [labels_dict, labels_dict_with_none]})
+    node_metadata.get_all_metrics = MagicMock(return_value={"kube_node_info": [labels_dict, labels_dict_with_none]})
 
     node_metadata.convert_to_table_and_save("last_hour")
 
@@ -127,8 +124,7 @@ def test_convert_to_table_and_save_with_custom_columns(
     assert "namespace" in table.column_names
     assert list(item.as_py() for item in table.column("namespace")) == [NAMESPACE_VALUE, None]
 
-    assert "pod" in table.column_names
-    assert list(item.as_py() for item in table.column("pod")) == [POD_VALUE, None]
+    assert "pod" not in table.column_names
 
     assert type(table.column("labels")[0].as_py()) == str
     assert "custom_metric" in table.column_names
