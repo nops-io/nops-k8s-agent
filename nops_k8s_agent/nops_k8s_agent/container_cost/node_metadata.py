@@ -10,6 +10,7 @@ class NodeMetadata(BaseLabels):
     FILE_PREFIX = "node_metadata"
     FILENAME = "node_metadata_0.parquet"
     CUSTOM_COLUMN = {"instance_id": []}
+    POP_OUT_COLUMN = {"node": [], "pod": [], "namespace": []}
 
     def custom_metrics_function(self, data: dict) -> str:
         try:
@@ -21,5 +22,8 @@ class NodeMetadata(BaseLabels):
             return instance_id
         except Exception:
             return ""
+
+    def pop_out_metric(self, metric: str, data: dict) -> str:
+        return data.get("metric", {}).get(metric, "")
 
     CUSTOM_METRICS_FUNCTION = custom_metrics_function
