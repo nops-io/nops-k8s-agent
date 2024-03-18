@@ -28,7 +28,7 @@ class BaseLabels(BaseProm):
     FILENAME = f"v{SCHEMA_VERSION_DATE}_base_labels_0.parquet"
     CUSTOM_METRICS_FUNCTION = None
     CUSTOM_COLUMN = None
-    POP_OUT_COLUMN = None
+    POP_OUT_COLUMN = {"node": [], "pod": [], "namespace": []}
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus
@@ -49,6 +49,9 @@ class BaseLabels(BaseProm):
             if response:
                 metrics[metric_name] = response
         return metrics
+
+    def pop_out_metric(self, metric: str, data: dict) -> str:
+        return data.get("metric", {}).get(metric, "")
 
     def convert_to_table_and_save(
         self, period: str, current_time: datetime = None, step: str = "5m", filename: str = FILENAME
