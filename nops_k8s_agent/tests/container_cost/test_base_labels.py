@@ -171,7 +171,7 @@ def test_convert_to_table_and_save_last_hour(base_labels, mock_os_makedirs, mock
     assert table.column("period").to_pylist()[0] == "last_hour"
 
 
-def test_convert_to_table_for_no_entris(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
+def test_convert_to_table_for_no_entries(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
     base_labels.get_all_metrics = MagicMock(return_value={})
 
     base_labels.convert_to_table_and_save("last_hour")
