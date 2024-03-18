@@ -27,6 +27,7 @@ class BaseLabels(BaseProm):
     FILENAME = "base_labels_0.parquet"
     CUSTOM_METRICS_FUNCTION = None
     CUSTOM_COLUMN = None
+    POP_OUT_COLUMN = None
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus
@@ -79,6 +80,10 @@ class BaseLabels(BaseProm):
         if self.CUSTOM_COLUMN:
             # Create custom colum base on custom column key instead of update
             columns[list(self.CUSTOM_COLUMN.keys())[0]] = []
+        if self.POP_OUT_COLUMN:
+            for pop_out_column_name in self.POP_OUT_COLUMN:
+                columns[pop_out_column_name] = []
+
         for metric_name, data_list in all_metrics_data.items():
             for data in data_list:
                 if "values" not in data or len(data["values"]) == 0:
@@ -100,6 +105,10 @@ class BaseLabels(BaseProm):
                 if self.CUSTOM_METRICS_FUNCTION and callable(self.CUSTOM_METRICS_FUNCTION) and self.CUSTOM_COLUMN:
                     custom_metrics = self.CUSTOM_METRICS_FUNCTION(data)
                     columns[list(self.CUSTOM_COLUMN.keys())[0]].append(custom_metrics)
+                if self.POP_OUT_COLUMN:
+                    for pop_out_column_name in self.POP_OUT_COLUMN:
+                        custom_metrics = self.pop_out_metric(pop_out_column_name, data)
+                        columns[pop_out_column_name].append(custom_metrics)
 
         arrays = {k: pa.array(v) for k, v in columns.items()}
         table = pa.Table.from_pydict(arrays)
