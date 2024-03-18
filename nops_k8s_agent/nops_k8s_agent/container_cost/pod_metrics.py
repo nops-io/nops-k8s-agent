@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class PodMetrics(BaseMetrics):
@@ -18,4 +19,4 @@ class PodMetrics(BaseMetrics):
         # "kube_pod_container_resource_limits_memory_bytes": [], # Does not has
     }
     FILE_PREFIX = "pod_metrics"
-    FILENAME = "pod_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_0.parquet"

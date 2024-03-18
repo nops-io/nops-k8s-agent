@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class NodeMetadata(BaseLabels):
@@ -8,7 +9,7 @@ class NodeMetadata(BaseLabels):
         "kube_node_info": [],
     }
     FILE_PREFIX = "node_metadata"
-    FILENAME = "node_metadata_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metadata_0.parquet"
     CUSTOM_COLUMN = {"instance_id": []}
     POP_OUT_COLUMN = {"node": [], "pod": [], "namespace": []}
 

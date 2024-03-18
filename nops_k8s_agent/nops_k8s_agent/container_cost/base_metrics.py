@@ -11,13 +11,14 @@ import pytz
 from loguru import logger
 
 from nops_k8s_agent.container_cost.base_prom import BaseProm
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class BaseMetrics(BaseProm):
     # This class to get pod metrics from prometheus and put it in dictionary
     # List of metrics:
     list_of_metrics = {}
-    FILENAME = "base_metrics.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_base_metrics.parquet"
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus

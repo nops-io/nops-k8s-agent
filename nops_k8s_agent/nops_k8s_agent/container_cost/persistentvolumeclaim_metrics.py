@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class PersistentvolumeclaimMetrics(BaseMetrics):
@@ -18,4 +19,4 @@ class PersistentvolumeclaimMetrics(BaseMetrics):
         ],
     }
     FILE_PREFIX = "persistentvolumeclaim_metrics"
-    FILENAME = "persistentvolumeclaim_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_persistentvolumeclaim_metrics_0.parquet"
