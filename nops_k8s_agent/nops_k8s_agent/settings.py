@@ -124,7 +124,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SCHEMA_VERSION = "1.1"
-SCHEMA_VERSION_DATE = "20240320"  # march 20 2024
+SCHEMA_VERSION_DATE = "20240318"  # march 18 2024
 import dynaconf  # noqa
 
 settings = dynaconf.DjangoDynaconf(
