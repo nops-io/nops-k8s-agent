@@ -88,6 +88,7 @@ def get_config(
         window_start = yesterday + "T00:00:00Z"
         window_end = yesterday + "T23:59:59Z"
     window = f"{window_start},{window_end}"
+    config["aggregate_by"] = aggregate_by
     config["params"] = (
         ("window", window),
         ("aggregate", aggregate_by),
@@ -214,7 +215,17 @@ def process_result(result, config):
             for ignored_key in config["ignored_alloc_keys"]:
                 split[alloc_name].pop(ignored_key, None)
     try:
-        frames = [pd.json_normalize(split.values()) for split in result]
+        frames = []
+        for split in result:
+            df = pd.json_normalize(split.values())
+            if "deployment" in config["aggregate_by"]:
+                aggregate_components = config["aggregate_by"].split(",")
+                deployment_index = aggregate_components.index("deployment")
+                df["deployment"] = df["name"].apply(
+                    lambda x: x.split("/")[deployment_index] if x.count("/") >= deployment_index else "__unallocated__"
+                )
+
+            frames.append(df)
         processed_data = pd.concat(frames)
         processed_data.rename(columns=config["rename_columns_config"], inplace=True)
         processed_data = processed_data.astype(config["data_types"])
