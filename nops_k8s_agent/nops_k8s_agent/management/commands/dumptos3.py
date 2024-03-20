@@ -15,7 +15,7 @@ from nops_k8s_agent.container_cost.persistentvolume_metrics import Persistentvol
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
 
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import main
+from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import main_command
 class Command(BaseCommand):
     def add_arguments(self, parser):
         # Optional command-line arguments for start and end date
@@ -24,10 +24,11 @@ class Command(BaseCommand):
 
     def export_opencost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        processed_data = main(s3_bucket=s3_bucket, s3_prefix=s3_prefix, cluster_arn=cluster_arn, now=start_time)
-        path = f"s3://{s3_bucket}{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}"
-        print("\n\npath is: ", path)
-        # processed_data.to_parquet(path)
+        processed_data = main_command(s3_bucket=s3_bucket, s3_prefix=s3_prefix, cluster_arn=cluster_arn, now=start_time)
+        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}"
+        if processed_data:
+            print(f"\nsaving to: {path}")
+            processed_data.to_parquet(path)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
         tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
