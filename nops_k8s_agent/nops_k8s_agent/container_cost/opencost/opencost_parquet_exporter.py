@@ -62,7 +62,7 @@ def get_config(
     # variable is also ignored.
     # This is done, so passing parameters have precedence to environment variables.
     if hostname is None:
-        hostname = os.environ.get("OPENCOST_PARQUET_SVC_HOSTNAME", "localhost")
+        hostname = os.environ.get("OPENCOST_PARQUET_SVC_HOSTNAME", "opencost.opencost.svc.cluster.local")
     if port is None:
         port = int(os.environ.get("OPENCOST_PARQUET_SVC_PORT", 9003))
     if window_start is None:
@@ -74,7 +74,7 @@ def get_config(
     if file_key_prefix is None:
         file_key_prefix = os.environ.get("OPENCOST_PARQUET_FILE_KEY_PREFIX", "/tmp/")
     if aggregate_by is None:
-        aggregate_by = os.environ.get("OPENCOST_PARQUET_AGGREGATE", "namespace,pod,container")
+        aggregate_by = os.environ.get("OPENCOST_PARQUET_AGGREGATE", "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container")
     if step is None:
         step = os.environ.get("OPENCOST_PARQUET_STEP", "1h")
 
