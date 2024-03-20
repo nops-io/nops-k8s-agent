@@ -303,9 +303,6 @@ def main(s3_bucket=None, s3_prefix=None, cluster_arn=None, now=None):
     print(config)
     print("Retrieving data from opencost api")
     result = request_data(config)
-    if result is None:
-        print("Result is None. Aborting execution")
-        sys.exit(1)
     print("Opencost data retrieved successfully")
     print("Processing the data")
     processed_data = process_result(result, config)
