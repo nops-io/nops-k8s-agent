@@ -1,8 +1,8 @@
-from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.container_cost.base_labels import BaseLabels
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
-class DeploymentMetrics(BaseMetrics):
+class DeploymentMetrics(BaseLabels):
     # This class to get pod metrics from prometheus and put it in dictionary
     # List of metrics:
     list_of_metrics = {
@@ -15,5 +15,5 @@ class DeploymentMetrics(BaseMetrics):
             "namespace",
         ],
     }
-    FILE_PREFIX = "deployment_metrics"
-    FILENAME = f"v{SCHEMA_VERSION_DATE}_deployment_metrics_0.parquet"
+    FILE_PREFIX = "deployment_metadata"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_deployment_metadata_0.parquet"
