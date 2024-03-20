@@ -74,7 +74,10 @@ def get_config(
     if file_key_prefix is None:
         file_key_prefix = os.environ.get("OPENCOST_PARQUET_FILE_KEY_PREFIX", "/tmp/")
     if aggregate_by is None:
-        aggregate_by = os.environ.get("OPENCOST_PARQUET_AGGREGATE", "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container")
+        aggregate_by = os.environ.get(
+            "OPENCOST_PARQUET_AGGREGATE",
+            "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container",
+        )
     if step is None:
         step = os.environ.get("OPENCOST_PARQUET_STEP", "1h")
 
@@ -218,6 +221,10 @@ def process_result(result, config):
         frames = []
         for split in result:
             df = pd.json_normalize(split.values())
+            label_columns = [col for col in df.columns if col.startswith("properties.labels.")]
+            df["labels"] = df.apply(lambda row: {col.split(".")[-1]: row[col] for col in label_columns}, axis=1)
+            df.drop(columns=label_columns, inplace=True)
+
             if "deployment" in config["aggregate_by"]:
                 aggregate_components = config["aggregate_by"].split(",")
                 deployment_index = aggregate_components.index("deployment")
@@ -253,9 +260,7 @@ def main_command(s3_bucket=None, s3_prefix=None, cluster_arn=None, now=None):
     for yesterday.
     """
     print("Starting run")
-    config = get_config(window_start=now,
-                        s3_bucket=s3_bucket,
-                        file_key_prefix=s3_prefix)
+    config = get_config(window_start=now, s3_bucket=s3_bucket, file_key_prefix=s3_prefix)
     print(config)
     print("Retrieving data from opencost api")
     result = request_data(config)

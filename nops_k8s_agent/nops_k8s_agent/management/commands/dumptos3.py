@@ -25,9 +25,9 @@ class Command(BaseCommand):
     def export_opencost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         processed_data = main_command(s3_bucket=s3_bucket, s3_prefix=s3_prefix, cluster_arn=cluster_arn, now=start_time)
-        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}"
-        if processed_data:
-            print(f"\nsaving to: {path}")
+        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/k8s_opencost.parquet"
+        if not processed_data.empty:
+            print(f"\nSaving opencost data to {path}")
             processed_data.to_parquet(path)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
