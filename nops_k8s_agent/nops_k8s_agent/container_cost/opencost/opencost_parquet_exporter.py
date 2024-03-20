@@ -247,51 +247,7 @@ def process_result(result, config):
     return processed_data
 
 
-def save_result(processed_result, config):
-    """
-    Save the processed result either to the local filesystem or an S3 bucket
-    in parquet file format.
-
-    Parameters:
-    - processed_result (DataFrame): The processed data to save.
-    - config (dict): Configuration dictionary including keys for the S3 bucket,
-                     file key prefix, and others.
-
-    Returns:
-    - uri : String with the path where the data was saved.
-    """
-    file_name = "k8s_opencost.parquet"
-    window = datetime.strptime(config["window_start"], "%Y-%m-%dT%H:%M:%SZ")
-    parquet_prefix = f"{config['file_key_prefix']}/year={window.year}" f"/month={window.month}/day={window.day}"
-    try:
-        if config.get("s3_bucket", None):
-            uri = f"s3://{config['s3_bucket']}/{parquet_prefix}/{file_name}"
-        else:
-            uri = f"file://{parquet_prefix}/{file_name}"
-            path = "/" + parquet_prefix
-            os.makedirs(path, 0o750, exist_ok=True)
-        processed_result.to_parquet(uri)
-        return uri
-    except pd.errors.EmptyDataError as ede:
-        print(f"Error: No data to save, the DataFrame is empty.{ede}")
-    except KeyError as ke:
-        print(f"Missing configuration key: {ke}")
-    except ValueError as ve:
-        print(f"Error parsing date format: {ve}")
-    except FileNotFoundError as fnfe:
-        print(f"File or directory not found: {fnfe}")
-    except PermissionError as pe:
-        print(f"Permission error: {pe}")
-    except boto_exceptions.NoCredentialsError:
-        print("Error: No AWS credentials found to access S3")
-    except boto_exceptions.PartialCredentialsError:
-        print("Error: Incomplete AWS credentials provided for accessing S3")
-    except boto_exceptions.ClientError as ce:
-        print(f"AWS Client Error: {ce}")
-    return None
-
-
-def main(s3, s3_bucket, s3_prefix, cluster_arn, now):
+def main_command(s3_bucket=None, s3_prefix=None, cluster_arn=None, now=None):
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
@@ -303,10 +259,8 @@ def main(s3, s3_bucket, s3_prefix, cluster_arn, now):
     print(config)
     print("Retrieving data from opencost api")
     result = request_data(config)
-    if result is None:
-        print("Result is None. Aborting execution")
-        sys.exit(1)
-    print("Opencost data retrieved successfully")
-    print("Processing the data")
-    processed_data = process_result(result, config)
-    return processed_data
+    if result:
+        print("Opencost data retrieved successfully")
+        print("Processing the data")
+        processed_data = process_result(result, config)
+        return processed_data
