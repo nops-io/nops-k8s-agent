@@ -291,7 +291,7 @@ def save_result(processed_result, config):
     return None
 
 
-def main(s3, s3_bucket, s3_prefix, cluster_arn, now):
+def main(s3_bucket=None, s3_prefix=None, cluster_arn=None, now=None):
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
