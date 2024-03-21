@@ -224,8 +224,7 @@ def process_result(result, config):
             label_columns = [col for col in df.columns if col.startswith("properties.labels.")]
             df["labels"] = df.apply(lambda row: {col.split(".")[-1]: row[col] for col in label_columns}, axis=1)
             df.drop(columns=label_columns, inplace=True)
-
-            if "deployment" in config["aggregate_by"]:
+            if "deployment" in config["aggregate_by"] and "name" in df:
                 aggregate_components = config["aggregate_by"].split(",")
                 deployment_index = aggregate_components.index("deployment")
                 df["deployment"] = df["name"].apply(
