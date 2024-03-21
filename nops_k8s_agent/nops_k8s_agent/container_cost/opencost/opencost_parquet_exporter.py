@@ -230,6 +230,10 @@ def process_result(result, config):
                 df["deployment"] = df["name"].apply(
                     lambda x: x.split("/")[deployment_index] if x.count("/") >= deployment_index else "__unallocated__"
                 )
+            if "start" in df.columns:
+                df["start"] = pd.to_datetime(df["start"]).apply(lambda x: x.timestamp())
+            if "end" in df.columns:
+                df["end"] = pd.to_datetime(df["end"]).apply(lambda x: x.timestamp())
 
             frames.append(df)
         processed_data = pd.concat(frames)
