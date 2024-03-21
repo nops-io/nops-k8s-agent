@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from django.core.management import call_command
 
@@ -17,7 +18,7 @@ def test_dumptos3(main_mock, mock_prom_conn):
         mock_df = MagicMock()
         mock_df.to_parquet = MagicMock()  # Add the .to_parquet() method to the mock
         main_mock.return_value = None
-        
+
         call_command("dumptos3")
         assert mock_prom_conn.called
         assert mock_s3.return_value.upload_file.call_count == 8
