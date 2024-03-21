@@ -87,9 +87,9 @@ def get_config(
     config["file_key_prefix"] = file_key_prefix
     # If window is not specified assume we want yesterday data.
     if window_start is None or window_end is None:
-        yesterday = datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d")
-        window_start = yesterday + "T00:00:00Z"
-        window_end = yesterday + "T23:59:59Z"
+        yesterday = datetime.now() - timedelta(1)
+        window_start = int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+        window_end = int(yesterday.replace(hour=23, minute=59, second=59, microsecond=0).timestamp())
     window = f"{window_start},{window_end}"
     config["aggregate_by"] = aggregate_by
     config["params"] = (
