@@ -102,8 +102,17 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
     helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
       --namespace prometheus-system --create-namespace \
       --set prometheus-pushgateway.enabled=false \
-      --set alertmanager.enabled=false
+      --set alertmanager.enabled=false \
+      -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
     ```
+
+  - **OpenCost**: The agent leverages OpenCost for labels and extra calculations
+  ```shell
+    kubectl create namespace opencost
+    helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost \
+      --namespace opencost -f ./charts/nops-k8s-agent/opencost_local.yaml
+  ```
+  
 
 - **AWS Configuration**:
   - **S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
@@ -154,10 +163,10 @@ Start the helm chart
     # Upgrade chart.
     helm \
       upgrade -i nops-k8s-agent ./charts/nops-k8s-agent \
-      -f /tmp/values.yaml \
+      -f ./charts/nops-k8s-agent/values.yaml \
       --namespace nops-k8s-agent \
-      --set image.repository=ghcr.io/nops-io/nops-k8s-agent \
-      --set image.tag=deploy \
+      --set image.repository=ghcr.io/andremilk/nops-k8s-agent \
+      --set image.tag=latest \
       --set env_variables.APP_ENV=live \
       --wait --timeout=300s
 
