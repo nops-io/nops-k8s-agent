@@ -97,7 +97,7 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
     kubectl create namespace nops-k8s-agent
     kubectl config set-context --current --namespace=nops-k8s-agent
     ```
-  - **Prometheus**: The agent requires Prometheus for metrics collection. If not already installed, deploy Prometheus in your cluster using Helm.
+  - **Prometheus**: The agent requires Prometheus for metrics collection. If not already installed, deploy Prometheus in your cluster using Helm. This command provides the extraScrapeConfigs.yaml which is required for this setup.
     ```shell
     helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
       --namespace prometheus-system --create-namespace \
@@ -106,16 +106,17 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
       -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
     ```
 
-  - **OpenCost**: The agent leverages OpenCost for labels and extra calculations
+  - **OpenCost**: The agent leverages OpenCost for labels and extra calculations. In this command we provide a default configuration for it.
   ```shell
     kubectl create namespace opencost
     helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost \
-      --namespace opencost -f ./charts/nops-k8s-agent/opencost_local.yaml
+      --namespace opencost -f ./charts/opencost/opencost_local.yaml
   ```
   
 
 - **AWS Configuration**:
   - **S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
+  You can find a CloudFormation template to help with that step on the extras folder.
   - **Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
     ```shell
     kubectl create secret generic nops-k8s-agent \
