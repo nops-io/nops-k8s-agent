@@ -116,6 +116,7 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
 
 - **AWS Configuration**:
   - **S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
+  You can find a CloudFormation template to help with that step on the extras folder.
   - **Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
     ```shell
     kubectl create secret generic nops-k8s-agent \
