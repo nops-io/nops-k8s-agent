@@ -15,6 +15,7 @@ from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import mai
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class Command(BaseCommand):
@@ -26,7 +27,7 @@ class Command(BaseCommand):
     def export_opencost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         processed_data = main_command(s3_bucket=s3_bucket, s3_prefix=s3_prefix, cluster_arn=cluster_arn, now=start_time)
-        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/k8s_opencost.parquet"
+        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_opencost.parquet"
         if processed_data is not None and not processed_data.empty:
             print(f"\nSaving opencost data to {path}")
             processed_data.to_parquet(path)
