@@ -97,6 +97,17 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
     kubectl create namespace nops-k8s-agent
     kubectl config set-context --current --namespace=nops-k8s-agent
     ```
+
+  - **S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
+  You can find a CloudFormation template to help with that step on the extras folder.
+
+  - **Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
+    ```shell
+    kubectl create secret generic nops-k8s-agent \
+    --from-literal=aws_access_key_id=<YourAccessKeyId> \
+    --from-literal=aws_secret_access_key=<YourSecretAccessKey> \
+    --namespace=nops-k8s-agent
+    ```
   - **Prometheus**: The agent requires Prometheus for metrics collection. If not already installed, deploy Prometheus in your cluster using Helm. This command provides the extraScrapeConfigs.yaml which is required for this setup.
     ```shell
     helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
@@ -113,17 +124,6 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
       --namespace opencost -f ./charts/opencost/opencost_local.yaml
   ```
   
-
-- **AWS Configuration**:
-  - **S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
-  You can find a CloudFormation template to help with that step on the extras folder.
-  - **Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
-    ```shell
-    kubectl create secret generic nops-k8s-agent \
-    --from-literal=aws_access_key_id=<YourAccessKeyId> \
-    --from-literal=aws_secret_access_key=<YourSecretAccessKey> \
-    --namespace=nops-k8s-agent
-    ```
 
 Completing these steps ensures your environment is correctly prepared for the nOps Kubernetes Agent deployment.
 
