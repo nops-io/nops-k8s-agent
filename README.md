@@ -166,8 +166,8 @@ Start the helm chart
       upgrade -i nops-k8s-agent ./charts/nops-k8s-agent \
       -f ./charts/nops-k8s-agent/values.yaml \
       --namespace nops-k8s-agent \
-      --set image.repository=ghcr.io/andremilk/nops-k8s-agent \
-      --set image.tag=latest \
+      --set image.repository=ghcr.io/nops-io/nops-k8s-agent \
+      --set image.tag=deploy \
       --set env_variables.APP_ENV=live \
       --wait --timeout=300s
 
