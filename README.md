@@ -110,6 +110,7 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
   You can find a CloudFormation template to help with that step on the extras folder.
 
   - **Step 3: Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
+    Linux:
     ```shell
     kubectl create secret generic nops-k8s-agent \
     --from-literal=aws_access_key_id=<YourAccessKeyId> \
@@ -117,7 +118,7 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
     --namespace=nops-k8s-agent
     ```
 
-    for windows
+    Windows PowerShell:
     ```shell
     kubectl create secret generic nops-k8s-agent `
     --from-literal=aws_access_key_id=<YourAccessKeyId> `
@@ -126,6 +127,8 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
     ```
 
   - **Step 4: Prometheus**: The agent requires Prometheus for metrics collection. If not already installed, deploy Prometheus in your cluster using Helm. This command provides the extraScrapeConfigs.yaml which is required for this setup.
+   
+    Linux:
     ```shell
     helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
       --namespace prometheus-system --create-namespace \
@@ -134,7 +137,7 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
       -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
     ```
 
-    for windows
+    Windows PowerShell:
     ```shell
     helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus `
     --namespace prometheus-system --create-namespace `
@@ -145,12 +148,14 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
 
 
   - **Step 5: OpenCost**: The agent leverages OpenCost for labels and extra calculations. In this command we provide a default configuration for it.
+  
+  Linux:
   ```shell
     helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost \
       --namespace opencost  --create-namespace -f ./charts/opencost/opencost_local.yaml
   ```
 
-  for windows
+  Windows PowerShell:
   ```shell
     helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost `
     --namespace opencost --create-namespace -f .\charts\opencost\opencost_local.yaml
@@ -190,9 +195,8 @@ There are 2 options for deployment
 
 ### Option 1: Deploy Agent From Source Code
 
-Using helm chart for deployment. You need to clone this repo first to get chart files.
-
-Start the helm chart
+Using helm chart for deployment from a cloned repository.
+  Linux:
   ```shell
     helm \
       upgrade -i nops-k8s-agent ./charts/nops-k8s-agent \
@@ -204,7 +208,7 @@ Start the helm chart
       --wait --timeout=300s
 ```
 
-for windows
+  Windows PowerShell:
   ```shell
     helm upgrade -i nops-k8s-agent .\charts\nops-k8s-agent `
     -f .\charts\nops-k8s-agent\values.yaml `
