@@ -119,9 +119,8 @@ Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the foll
 
   - **OpenCost**: The agent leverages OpenCost for labels and extra calculations. In this command we provide a default configuration for it.
   ```shell
-    kubectl create namespace opencost
     helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost \
-      --namespace opencost -f ./charts/opencost/opencost_local.yaml
+      --namespace opencost  --create-namespace -f ./charts/opencost/opencost_local.yaml
   ```
   
 
