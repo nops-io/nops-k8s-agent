@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class PodMetrics(BaseMetrics):
@@ -16,6 +17,16 @@ class PodMetrics(BaseMetrics):
         "kube_pod_container_resource_limits": ["resource", "unit", "container", "pod", "namespace", "node", "uid"],
         # "kube_pod_container_resource_limits_cpu_cores": [], # Does not has
         # "kube_pod_container_resource_limits_memory_bytes": [], # Does not has
+        "container_network_receive_bytes_total": ["pod", "namespace", "instance"],
+        "container_network_transmit_bytes_total": ["pod", "namespace", "instance"],
+        "pod_pvc_allocation": ["namespace", "persistentvolume", "persistentvolumeclaim", "pod"],
+        "kube_pod_spec_volumes_persistentvolumeclaims_info": [
+            "namespace",
+            "node",
+            "pod",
+            "persistentvolumeclaim",
+            "uid",
+        ],
     }
     FILE_PREFIX = "pod_metrics"
-    FILENAME = "pod_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_0.parquet"

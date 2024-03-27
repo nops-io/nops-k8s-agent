@@ -1,4 +1,5 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
 class JobMetrics(BaseMetrics):
@@ -6,4 +7,4 @@ class JobMetrics(BaseMetrics):
     # List of metrics:
     list_of_metrics = {"kube_job_status_failed": ["job_name", "namespace", "reason"]}
     FILE_PREFIX = "job_metrics"
-    FILENAME = "job_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_job_metrics_0.parquet"
