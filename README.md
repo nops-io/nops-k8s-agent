@@ -222,8 +222,21 @@ Using helm chart for deployment from a cloned repository.
 
 ### Option 2: Deploy Agent via Helm Repo (recommended)
 
-    helm repo add nops-k8s-agent https://nops-io.github.io/nops-k8s-agent
-    helm install -f values.yaml nops-k8s-agent
+Linux:
+```shell
+    helm \
+      install nops-k8s-agent --repo  https://nops-io.github.io/nops-k8s-agent \
+      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
+```
+Windows PowerShell:
+```shell
+    helm `
+      install nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent `
+      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
+
+```
+
+
 
 
 ## Configure nOps Integration
