@@ -7,6 +7,7 @@
   * [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/)
   * [k3d (for development)](https://k3d.io/v5.1.0/)
   * [make](#make)
+- [Easy Install](#easy-install)
 - [Development Setup](#development-setup)
 - [Prerequisites](#prerequisites)
   * [nOps Account](#nops-account)
@@ -33,6 +34,25 @@ This enables the nOps platform to:
 
 This document guides you through the setup and deployment process, ensuring a smooth integration with the nOps platform for enhanced operational efficiency.
 
+## Easy Install
+
+You can quickly install the agent and all it's requirements and performing all the steps downloading the easy-install.zip file on the release.
+It has all the yaml files for helm configurations as well as the cf-bucket-access-key.yaml CloudFormation template to quickly create a bucket and a user with credentials for the agent.
+
+**Make sure you have helm and kubectl installed and you are pointing to the correct cluster.**
+
+- Download and extract easy-install.zip
+- Use cf-bucket-access-key.yaml CloudFormation template to create a S3 bucket and a User for the agent
+- Replace the values in values.yaml for:
+  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
+  - APP_AWS_S3_BUCKET
+  - APP_AWS_S3_PREFIX
+- Replace the values on install.sh script for:
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+- Run the install.sh script
+  - if succesful, you should see "Proceed to nOps Dashboard and finish the integration."
+- Go to nOps Dashboard integration Container Cost and setup the bucket 
 ---
 
 ## Development Requirements
