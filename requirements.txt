@@ -2,7 +2,8 @@ djangorestframework
 hypercorn==0.13.2
 dynaconf==3.1.7
 prometheus-api-client==0.5.1
-kubernetes==23.6.0
+kubernetes==29.0.0
+kubernetes_asyncio==29.0.0
 pyarrow
 loguru
 django-extensions
