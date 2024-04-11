@@ -58,7 +58,7 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}-rightsizing-high
+  name: {{ template "nops-k8s-agent.fullname" . }}-rightsizing
 spec:
   schedule: "{{ .Values.cronjob.schedule }}"
   jobTemplate:
