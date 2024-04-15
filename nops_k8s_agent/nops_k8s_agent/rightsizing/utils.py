@@ -15,7 +15,7 @@ _EXPONENTS = {
 
 
 # Waits for https://github.com/kubernetes-client/python/issues/2205 to be merged
-def format_quantity(quantity_value, suffix, quantize=None) -> str:
+def format_quantity(quantity_value, suffix, quantize=Decimal("1")) -> str:
     """
     Takes a decimal and produces a string value in kubernetes' canonical quantity form,
     like "200Mi".Users can specify an additional decimal number to quantize the output.
@@ -65,3 +65,8 @@ def format_quantity(quantity_value, suffix, quantize=None) -> str:
     if quantize:
         different_scale = different_scale.quantize(quantize)
     return str(different_scale) + suffix
+
+
+def percentages_difference_threshold_met(old_value: Decimal, new_value: Decimal, threshold_percent: float) -> bool:
+    larger_value = max(abs(old_value), abs(new_value))
+    return (abs(old_value - new_value) / larger_value) >= threshold_percent
