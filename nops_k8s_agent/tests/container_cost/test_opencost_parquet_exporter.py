@@ -101,7 +101,7 @@ def test_get_config_defaults():
     Test get_config uses default values when no arguments or environment variables are set.
     """
     aggregations = (
-        "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container"
+        "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container"
     )
     yesterday = datetime.now() - timedelta(1)
     expected_window_start = int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
