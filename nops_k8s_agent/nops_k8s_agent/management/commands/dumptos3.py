@@ -58,6 +58,10 @@ class Command(BaseCommand):
                 s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
                 self.stdout.write(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
             except Exception as e:
+                import traceback
+
+                traceback_info = traceback.format_exc()
+                print(traceback_info)
                 self.stderr.write(f"Error when processing {type(klass)} {str(e)}")
             finally:
                 # Trying to remove the tmp file

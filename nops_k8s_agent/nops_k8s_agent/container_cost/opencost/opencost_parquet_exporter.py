@@ -76,7 +76,7 @@ def get_config(
     if aggregate_by is None:
         aggregate_by = os.environ.get(
             "OPENCOST_PARQUET_AGGREGATE",
-            "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container",
+            "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container",
         )
     if step is None:
         step = os.environ.get("OPENCOST_PARQUET_STEP", "1h")
@@ -95,7 +95,7 @@ def get_config(
     config["params"] = (
         ("window", window),
         ("aggregate", aggregate_by),
-        ("includeIdle", "false"),
+        ("includeIdle", "true"),
         ("idleByNode", "false"),
         ("includeProportionalAssetResourceCosts", "false"),
         ("format", "json"),
@@ -253,6 +253,10 @@ def process_result(result, config):
         return None
     except KeyError as err:
         print(f"Key error: {err}")
+        import traceback
+
+        traceback_info = traceback.format_exc()
+        print(traceback_info)
         return None
     return processed_data
 
