@@ -60,11 +60,11 @@ def get_config(
         port = int(os.environ.get("NOPSCOST_SVC_PORT", 9003))
     if aggregate_by is None:
         aggregate_by = os.environ.get(
-            "OPENCOST_PARQUET_AGGREGATE",
+            "NOPSCOST_AGGREGATE",
             "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container",
         )
     if step is None:
-        step = os.environ.get("OPENCOST_PARQUET_STEP", "1h")
+        step = os.environ.get("NOPSCOST_STEP", "1h")
 
     config["url"] = f"http://{hostname}:{port}/allocation/compute"
     # If window is not specified assume we want yesterday data.

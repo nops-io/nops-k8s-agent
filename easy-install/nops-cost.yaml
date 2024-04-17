@@ -1,11 +1,11 @@
 # -- Overwrite the default name of the chart
-nameOverride: ""
+nameOverride: "nops-cost"
 # -- Overwrite all resources name created by the chart
-fullnameOverride: ""
+fullnameOverride: "nops-cost"
 # -- Override the deployment namespace
 namespaceOverride: ""
 
-loglevel: info
+loglevel: warn
 
 plugins:
   enabled: false
@@ -44,7 +44,7 @@ serviceAccount:
   # eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/eksctl-opencost
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  name: "nops-cost"
   # -- Whether pods running as this service account should have an API token automatically mounted
   automountServiceAccountToken: true
 
@@ -56,13 +56,13 @@ networkPolicies:
   # -- Internal Prometheus settings related to NetworkPolicies
   prometheus:
     # -- Namespace where internal Prometheus is installed
-    namespace: prometheus-system
+    namespace: nops-prometheus-system
     # -- Pod port of in-cluster Prometheus
     port: 9090
     # -- Labels applied to the Prometheus server pod(s)
     labels:
       app.kubernetes.io/name: prometheus
-
+      app.kubernetes.io/instance: nops-prometheus
 # --  Strategy to be used for the Deployment
 updateStrategy:
   rollingUpdate:
@@ -70,12 +70,12 @@ updateStrategy:
     maxUnavailable: 1
   type: RollingUpdate
 # --  Annotations to add to the all the resources
-annotations: {}
-# --  Annotations to add to the OpenCost Pod
+annotations: {"app.kubernetes.io/name": "nops-cost"}
+# --  Annotations to add to the nOpsCost Pod
 podAnnotations: {}
 # --  Annotations to add to the Secret
 secretAnnotations: {}
-# --  Labels to add to the OpenCost Pod
+# --  Labels to add to the nOpsCost Pod
 podLabels: {}
 # --  Pod priority
 priorityClassName: ~
@@ -308,9 +308,9 @@ opencost:
       # -- Use in-cluster Prometheus
       enabled: true
       # -- Service name of in-cluster Prometheus
-      serviceName: prometheus-server
+      serviceName: nops-prometheus-server
       # -- Namespace of in-cluster Prometheus
-      namespaceName: prometheus-system
+      namespaceName: nops-prometheus-system
       # -- Service port of in-cluster Prometheus
       port: 80
     amp:
@@ -333,7 +333,7 @@ opencost:
 
   ui:
     # -- Enable OpenCost UI
-    enabled: false #
+    enabled: true #
     image:
       # -- UI container image registry
       registry: ghcr.io

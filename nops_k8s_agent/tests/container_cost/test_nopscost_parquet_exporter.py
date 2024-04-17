@@ -7,10 +7,10 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import get_config
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import main_command
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import process_result
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import request_data
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import get_config
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import main_command
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import process_result
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import request_data
 
 
 @pytest.fixture
@@ -100,16 +100,13 @@ def test_get_config_defaults():
     """
     Test get_config uses default values when no arguments or environment variables are set.
     """
-    aggregations = (
-        "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container"
-    )
+    aggregations = "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container"
     yesterday = datetime.now() - timedelta(1)
     expected_window_start = int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
     expected_window_end = int(yesterday.replace(hour=23, minute=59, second=59, microsecond=0).timestamp())
 
     config = get_config()
-    assert config["url"] == "http://opencost.opencost.svc.cluster.local:9003/allocation/compute"
-    assert config["file_key_prefix"] == "/tmp/"
+    assert config["url"] == "http://nops-cost.nops-cost.svc.cluster.local:9003/allocation/compute"
     assert config["aggregate_by"] == aggregations
     assert config["params"][0][1] == f"{expected_window_start},{expected_window_end}"
 
@@ -117,14 +114,10 @@ def test_get_config_defaults():
 @patch.dict(
     os.environ,
     {
-        "OPENCOST_PARQUET_SVC_HOSTNAME": "envhost",
-        "OPENCOST_PARQUET_SVC_PORT": "8000",
-        "OPENCOST_PARQUET_WINDOW_START": "2023-01-01T00:00:00Z",
-        "OPENCOST_PARQUET_WINDOW_END": "2023-01-01T23:59:59Z",
-        "OPENCOST_PARQUET_S3_BUCKET": "mybucket",
-        "OPENCOST_PARQUET_FILE_KEY_PREFIX": "/env/prefix/",
-        "OPENCOST_PARQUET_AGGREGATE": "pod,container",
-        "OPENCOST_PARQUET_STEP": "30m",
+        "NOPSCOST_SVC_HOSTNAME": "envhost",
+        "NOPSCOST_SVC_PORT": "8000",
+        "NOPSCOST_AGGREGATE": "pod,container",
+        "NOPSCOST_STEP": "30m",
     },
     clear=True,
 )
@@ -134,10 +127,7 @@ def test_get_config_from_environment_variables():
     """
     config = get_config()
     assert config["url"] == "http://envhost:8000/allocation/compute"
-    assert config["s3_bucket"] == "mybucket"
-    assert config["file_key_prefix"] == "/env/prefix/"
     assert config["aggregate_by"] == "pod,container"
-    assert config["params"][0][1] == "2023-01-01T00:00:00Z,2023-01-01T23:59:59Z"
     assert config["params"][6] == ("step", "30m")
 
 
@@ -151,14 +141,10 @@ def test_get_config_with_arguments():
         port=8080,
         window_start="2023-02-01T00:00:00Z",
         window_end="2023-02-01T23:59:59Z",
-        s3_bucket="argbucket",
-        file_key_prefix="/arg/prefix/",
         aggregate_by="namespace,deployment",
         step="15m",
     )
     assert config["url"] == "http://arghost:8080/allocation/compute"
-    assert config["s3_bucket"] == "argbucket"
-    assert config["file_key_prefix"] == "/arg/prefix/"
     assert config["aggregate_by"] == "namespace,deployment"
     assert config["params"][0][1] == "2023-02-01T00:00:00Z,2023-02-01T23:59:59Z"
     assert config["params"][6] == ("step", "15m")
