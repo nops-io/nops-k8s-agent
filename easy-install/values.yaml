@@ -33,3 +33,6 @@ env_variables:
   APP_DEBUG: False
   # set from helm command line
   AWS_DEFAULT_REGION: "us-west-2"
+  # nOpsCost
+  NOPSCOST_SVC_HOSTNAME: "nops-cost.nops-cost.svc.cluster.local"
+  NOPSCOST_SVC_PORT: 9003

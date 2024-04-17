@@ -1193,7 +1193,7 @@ extraScrapeConfigs: |
     scheme: http
     dns_sd_configs:
     - names:
-      - nopscost.nopscost
+      - nops-cost.nops-cost
       type: 'A'
       port: 9003
 
