@@ -291,9 +291,9 @@ def mock_processed_data():
     return MagicMock(name="DataFrame")
 
 
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.get_config")
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.request_data")
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.process_result")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.get_config")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.request_data")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.process_result")
 def test_main_command_success(
     mock_process_result, mock_request_data, mock_get_config, mock_config_main, mock_api_response, mock_processed_data
 ):
@@ -311,9 +311,9 @@ def test_main_command_success(
     assert result == mock_processed_data, "Expected main_command to return the processed data"
 
 
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.get_config")
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.request_data")
-@patch("nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter.process_result")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.get_config")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.request_data")
+@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.process_result")
 def test_main_command_api_failure(mock_process_result, mock_request_data, mock_get_config, mock_config_main):
     mock_get_config.return_value = mock_config_main
     mock_request_data.return_value = None  # Simulate an API failure

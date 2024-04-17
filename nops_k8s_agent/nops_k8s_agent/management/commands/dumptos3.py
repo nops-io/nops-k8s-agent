@@ -11,7 +11,7 @@ from nops_k8s_agent.container_cost.deployment_metrics import DeploymentMetrics
 from nops_k8s_agent.container_cost.job_metrics import JobMetrics
 from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
 from nops_k8s_agent.container_cost.node_metrics import NodeMetrics
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import main_command
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import main_command
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
