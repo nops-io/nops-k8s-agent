@@ -5,15 +5,20 @@ from typing import Any
 
 from django.core.management.base import BaseCommand
 
+from dependency_injector.wiring import Provide
+from dependency_injector.wiring import inject
 from kubernetes.utils.quantity import parse_quantity
 from kubernetes_asyncio import client
 from kubernetes_asyncio import config
 from kubernetes_asyncio.client.api_client import ApiClient
 
+from nops_k8s_agent.rightsizing.containers import Container
+from nops_k8s_agent.rightsizing.services import RightsizingClient
 from nops_k8s_agent.rightsizing.utils import format_quantity
 from nops_k8s_agent.rightsizing.utils import percentages_difference_threshold_met
 
 
+@inject
 class Command(BaseCommand):
     nops_configs: dict[str, Any] = {}
 
@@ -28,7 +33,6 @@ class Command(BaseCommand):
     async def rightsize(self):
         self._init_client()
         self.nops_configs = await self._get_nops_configs()
-        print(f"{self.nops_configs=}\n\n")
         tasks = []
 
         async with ApiClient() as api:
@@ -52,21 +56,18 @@ class Command(BaseCommand):
         await asyncio.gather(*tasks)
 
     @staticmethod
-    async def _get_nops_configs() -> dict[str, Any]:
-        """
-        MOCKED! Gets the list of nOps configured deployments for a cluster
-        Returns:
-        {
-            "namespace_1": {
-                "deployment_1": {
-                    "policy": {
-                        "threshold_percentage": 0.1  # Do not do rightsizing if the current and new value difference is smaller than the threshold percentage
-                    }
-                }
-            }
-        }
-        """
-        return {"opencost": {"opencost": {"policy": {"threshold_percentage": 0.1}}}}
+    @inject
+    async def _get_nops_configs(
+        rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client],
+    ) -> dict[str, Any]:
+        return await rightsizing_client.get_configs()
+
+    @staticmethod
+    @inject
+    async def _get_container_recommendations(
+        namespace: str, rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client]
+    ) -> dict[str, Any]:
+        return await rightsizing_client.get_namespace_recommendations(namespace=namespace)
 
     def _deployment_policy(self, namespace: str, deployment_name: str) -> None | dict:
         return self.nops_configs.get(namespace, {}).get(deployment_name, {}).get("policy")
@@ -118,27 +119,16 @@ class Command(BaseCommand):
 
         return deployments
 
-    @staticmethod
-    async def _get_container_recommendations(namespace: str) -> dict[str, Any]:
-        """
-        MOCKED! Gets limits/requests recommendations for containers by deployment
-        Returns:
-        {
-            "deployment_1": {
-                "container_1": {
-                    "requests": {"cpu": 0.2, "memory": 220000000}
-                }
-            }
-        }
-        """
-        return {"opencost": {"opencost": {"requests": {"cpu": 0.32, "memory": 73401320}}}}
-
     async def _find_pods_to_patch(self, namespace: str, configured_deployments: dict[str, Any]) -> dict[str, Any]:
         pods_to_patch = defaultdict(lambda: defaultdict(dict))
         recommendations = await self._get_container_recommendations(namespace=namespace)
 
+        print(f"{recommendations=}")
+
         for deployment, deployment_data in configured_deployments.items():
             deployment_policy_threshold = self._deployment_policy_threshold(namespace, deployment)
+
+            print(f"{deployment_policy_threshold=}")
 
             deployment_recommendations = recommendations.get(deployment, {})
             if not deployment_recommendations:

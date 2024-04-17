@@ -1,4 +1,8 @@
 import pytest
+import pytest_asyncio
+from unittest.mock import Mock, AsyncMock
+import kubernetes_asyncio.client
+from kubernetes_asyncio.config import load_incluster_config
 
 EXAMPLE_RESPONSE = [
     {
@@ -240,3 +244,100 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_skip_incluster_config_creation():
+    kubernetes_asyncio.config.load_incluster_config = Mock()
+
+    # Yield the mock to be used in the test
+    yield
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_core_api():
+    async def list_namespaced_pod_side_effect(namespace: str, label_selector: str):
+        items = []
+        if namespace == "opencost" and label_selector=="app.kubernetes.io/instance=opencost":
+            # Setup the return values of the mock methods and attributes
+            mock_metadata = Mock()
+            mock_metadata.configure_mock(name="opencost-1234")
+            containers = []
+
+            for i in range(1):
+                mock_container = Mock()
+                mock_container.configure_mock(name="opencost")
+                mock_container.configure_mock(resources=Mock(requests={"cpu": "200m"}))
+                containers.append(mock_container)
+
+            mock_item = Mock()
+            mock_item.configure_mock(metadata=mock_metadata)
+            mock_item.configure_mock(spec=Mock(containers=containers))
+            items.append(mock_item)
+
+        return Mock(items=items)
+
+    # Store the original CoreV1Api to restore it later
+    original_core_v1_api = kubernetes_asyncio.client.CoreV1Api
+
+    # Create the mock objects
+    mock_api = Mock()
+
+    mock_list_namespaced_pod = AsyncMock()
+    mock_list_namespaced_pod.side_effect = list_namespaced_pod_side_effect
+    mock_api.list_namespaced_pod = mock_list_namespaced_pod
+
+    mock_list_namespace = AsyncMock()
+    mock_metadata = Mock()
+    mock_metadata.configure_mock(name="opencost")
+    mock_list_namespace.return_value = Mock(items=[Mock(metadata=mock_metadata)])
+    mock_api.list_namespace = mock_list_namespace
+
+    mock_patch_namespaced_pod = AsyncMock()
+    mock_api.patch_namespaced_pod = mock_patch_namespaced_pod
+
+    # Replace the CoreV1Api with the mock
+    kubernetes_asyncio.client.CoreV1Api = Mock(return_value=mock_api)
+
+    # Yield the mock to be used in the test
+    yield mock_api
+
+    # Clean up: Restore the original CoreV1Api
+    kubernetes_asyncio.client.CoreV1Api = original_core_v1_api
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_list_namespaced_deployment():
+    async def list_namespaced_deployment_side_effect(namespace: str, watch: bool = False):
+        items = []
+        if namespace == "opencost":
+            # Setup the return values of the mock methods and attributes
+            mock_metadata = Mock()
+            mock_metadata.configure_mock(name="opencost")
+            mock_selector = Mock()
+            mock_selector.configure_mock(match_labels={"app.kubernetes.io/instance": "opencost"})
+            mock_items = Mock()
+            mock_items.configure_mock(metadata=mock_metadata)
+            mock_items.configure_mock(spec=Mock(selector=mock_selector))
+            items.append(mock_items)
+
+        return Mock(items=items)
+
+    # Store the original AppsV1Api to restore it later
+    original_apps_v1_api = kubernetes_asyncio.client.AppsV1Api
+
+    # Create the mock objects
+    mock_api = Mock()
+
+    mock_list_namespaced_deployment = AsyncMock()
+    mock_list_namespaced_deployment.side_effect = list_namespaced_deployment_side_effect
+    mock_api.list_namespaced_deployment = mock_list_namespaced_deployment
+
+    # Replace the AppsV1Api with the mock
+    kubernetes_asyncio.client.AppsV1Api = Mock(return_value=mock_api)
+
+    # Yield the mock to be used in the test
+    yield mock_api
+
+    # Clean up: Restore the original AppsV1Api
+    kubernetes_asyncio.client.AppsV1Api = original_apps_v1_api
