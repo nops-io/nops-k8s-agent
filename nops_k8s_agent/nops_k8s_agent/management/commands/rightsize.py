@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
@@ -7,52 +6,49 @@ from django.core.management.base import BaseCommand
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
-from kubernetes.utils.quantity import parse_quantity
-from kubernetes_asyncio import client
-from kubernetes_asyncio import config
-from kubernetes_asyncio.client.api_client import ApiClient
+from kubernetes_asyncio.client import V1Deployment
+from kubernetes_asyncio.client import V1Pod
 
 from nops_k8s_agent.rightsizing.containers import Container
+from nops_k8s_agent.rightsizing.models import PodPatch
+from nops_k8s_agent.rightsizing.services import KubernetesClient
 from nops_k8s_agent.rightsizing.services import RightsizingClient
-from nops_k8s_agent.rightsizing.utils import format_quantity
-from nops_k8s_agent.rightsizing.utils import percentages_difference_threshold_met
+from nops_k8s_agent.rightsizing.utils import get_container_patch
 
 
 @inject
 class Command(BaseCommand):
     nops_configs: dict[str, Any] = {}
 
-    @staticmethod
-    def _init_client():
-        config.load_incluster_config()
-
     def handle(self, *args, **options):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(self.rightsize())
 
-    async def rightsize(self):
-        self._init_client()
+    @inject
+    async def rightsize(self, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]):
         self.nops_configs = await self._get_nops_configs()
+
         tasks = []
-
-        async with ApiClient() as api:
-            v1_client = client.CoreV1Api(api)
-            all_namespaces = await v1_client.list_namespace(watch=False)
-            for namespace in all_namespaces.items:
-                tasks.append(self.process_namespace(namespace.metadata.name))
-
+        all_namespaces = await kubernetes_client.list_all_namespaces()
+        for namespace in all_namespaces.items:
+            tasks.append(self.process_namespace(namespace.metadata.name))
         await asyncio.gather(*tasks)
 
     async def process_namespace(self, namespace: str):
-        all_deployments = await self._list_deployments(namespace=namespace)
-        configured_deployments = all_deployments  # TODO: add filtering logic
-        configured_deployments = await self._enrich_deployments_with_pods(namespace, configured_deployments)
-        pods_to_patch = await self._find_pods_to_patch(namespace, configured_deployments)
+        all_deployments: list[V1Deployment] = await self._list_deployments(namespace=namespace)
+        configured_deployments: list[V1Deployment] = all_deployments  # TODO: add filtering logic
 
         tasks = []
-        for pod_name, pod_data in pods_to_patch.items():
-            tasks.append(self._patch_pod(namespace, pod_name, pod_data.get("containers", {})))
+        for deployment in configured_deployments:
+            tasks.append(self.process_deployment(deployment))
+        await asyncio.gather(*tasks)
 
+    async def process_deployment(self, deployment: V1Deployment):
+        pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
+
+        tasks = []
+        for pod_patch in pods_patches:
+            tasks.append(self._patch_pod(pod_patch))
         await asyncio.gather(*tasks)
 
     @staticmethod
@@ -72,143 +68,75 @@ class Command(BaseCommand):
     def _deployment_policy(self, namespace: str, deployment_name: str) -> None | dict:
         return self.nops_configs.get(namespace, {}).get(deployment_name, {}).get("policy")
 
-    def _deployment_policy_threshold(self, namespace: str, deployment_name: str) -> float:
-        policy = self._deployment_policy(namespace, deployment_name)
+    def _deployment_policy_requests_change_threshold(self, deployment: V1Deployment) -> float:
+        policy = self._deployment_policy(deployment.metadata.namespace, deployment.metadata.name)
         if isinstance(policy, dict):
             return policy.get("threshold_percentage", 0.0)
         else:
             return 0.0
 
-    async def _list_deployments(self, namespace: str):
-        deployments = {}
+    @inject
+    async def _list_deployments(
+        self, namespace: str, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ) -> list[V1Deployment]:
+        configured_deployments: list[V1Deployment] = []
+        all_deployments = await kubernetes_client.list_namespace_deployments(namespace_name=namespace)
+        nops_configured_deployments = list(self.nops_configs.get(namespace, {}).keys())
 
-        async with ApiClient() as api:
-            apps_v1 = client.AppsV1Api(api)
-            all_deployments = await apps_v1.list_namespaced_deployment(namespace=namespace, watch=False)
-            nops_configured_deployments = list(self.nops_configs.get(namespace, {}).keys())
+        for deployment in all_deployments.items:
+            if deployment.metadata.name not in nops_configured_deployments:
+                continue
+            configured_deployments.append(deployment)
 
-            for deployment in all_deployments.items:
-                if deployment.metadata.name not in nops_configured_deployments:
+        return configured_deployments
+
+    @inject
+    async def _find_deployment_pods_to_patch(
+        self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ) -> list[PodPatch]:
+        pods_to_patch: list[PodPatch] = []
+
+        deployment_policy_requests_change_threshold = self._deployment_policy_requests_change_threshold(deployment)
+        deployment_pods: list[V1Pod] = await kubernetes_client.list_deployment_pods(deployment)
+        namespace_recommendations = await self._get_container_recommendations(namespace=deployment.metadata.namespace)
+        deployment_recommendations = namespace_recommendations.get(deployment.metadata.name, {})
+
+        print(f"{deployment_recommendations=}")
+
+        if not deployment_recommendations:
+            return pods_to_patch
+
+        for pod in deployment_pods:
+            pod_patch = PodPatch(pod_name=pod.metadata.name, pod_namespace=pod.metadata.namespace, containers=[])
+
+            for container in pod.spec.containers:
+                container_requests_recommendations = deployment_recommendations.get(container.name, {}).get(
+                    "requests", {}
+                )
+                if not container_requests_recommendations:
                     continue
 
-                selector = deployment.spec.selector.match_labels
-                deployments[deployment.metadata.name] = {"selector": selector}
-
-        return deployments
-
-    @staticmethod
-    async def _enrich_deployments_with_pods(namespace: str, deployments: dict[str, Any]) -> dict[str, Any]:
-        """
-        Enriches deployments with pods that are controlled by them.
-        """
-
-        async with ApiClient() as api:
-            v1_client = client.CoreV1Api(api)
-            for deployment, deployment_data in deployments.items():
-                # Fetch the selector for each deployment
-                selector = deployment_data.get("selector")
-                selector_query = ",".join([f"{k}={v}" for k, v in selector.items()])
-                deployment_pods = await v1_client.list_namespaced_pod(
-                    namespace=namespace, label_selector=selector_query
+                recommended_cpu_requests = Decimal(container_requests_recommendations.get("cpu", 0))
+                recommended_ram_requests = Decimal(container_requests_recommendations.get("memory", 0))
+                container_patch = get_container_patch(
+                    container=container,
+                    recommended_cpu_requests=recommended_cpu_requests,
+                    recommended_ram_requests=recommended_ram_requests,
+                    deployment_policy_requests_change_threshold=deployment_policy_requests_change_threshold,
                 )
-                deployment_data["pods"] = {}
-                for pod in deployment_pods.items:
-                    deployment_data["pods"][pod.metadata.name] = {
-                        "containers": {container.name: container.resources for container in pod.spec.containers}
-                    }
+                if container_patch:
+                    pod_patch.containers.append(container_patch)
 
-        return deployments
-
-    async def _find_pods_to_patch(self, namespace: str, configured_deployments: dict[str, Any]) -> dict[str, Any]:
-        pods_to_patch = defaultdict(lambda: defaultdict(dict))
-        recommendations = await self._get_container_recommendations(namespace=namespace)
-
-        print(f"{recommendations=}")
-
-        for deployment, deployment_data in configured_deployments.items():
-            deployment_policy_threshold = self._deployment_policy_threshold(namespace, deployment)
-
-            print(f"{deployment_policy_threshold=}")
-
-            deployment_recommendations = recommendations.get(deployment, {})
-            if not deployment_recommendations:
-                continue
-
-            for pod, pod_data in deployment_data.get("pods", {}).items():
-                for container, container_data in pod_data.get("containers", {}).items():
-                    container_requests_recommendations = deployment_recommendations.get(deployment, {}).get(
-                        "requests", {}
-                    )
-                    if not container_requests_recommendations:
-                        continue
-
-                    new_requests = {}
-
-                    recommended_cpu_requests = Decimal(container_requests_recommendations.get("cpu", 0))
-                    recommended_ram_requests = Decimal(container_requests_recommendations.get("memory", 0))
-
-                    actual_cpu_requests = container_data.requests.get("cpu")
-                    actual_ram_requests = container_data.requests.get("memory")
-
-                    # Set new CPU requests if they were not set OR current request is lower than recommended
-                    if recommended_cpu_requests and not actual_cpu_requests:
-                        new_requests["cpu"] = recommended_cpu_requests
-                    elif recommended_cpu_requests and percentages_difference_threshold_met(
-                        parse_quantity(actual_cpu_requests),
-                        recommended_cpu_requests,
-                        deployment_policy_threshold,
-                    ):
-                        new_requests["cpu"] = recommended_cpu_requests
-
-                    # Set new Memory requests if they were not set OR current request is lower than recommended
-                    if recommended_ram_requests and not actual_ram_requests:
-                        new_requests["memory"] = recommended_ram_requests
-
-                    elif recommended_ram_requests and percentages_difference_threshold_met(
-                        parse_quantity(actual_ram_requests),
-                        recommended_ram_requests,
-                        deployment_policy_threshold,
-                    ):
-                        new_requests["memory"] = recommended_ram_requests
-
-                    if new_requests:
-                        pods_to_patch[pod]["containers"][container] = {"requests": {}}
-
-                        # Convert resources requests back from Decimal numbers to k8s notation (e.g. 256Mi)
-                        if new_requests.get("cpu"):
-                            pods_to_patch[pod]["containers"][container]["requests"]["cpu"] = format_quantity(
-                                new_requests["cpu"], "m"
-                            )
-                        if new_requests.get("memory"):
-                            pods_to_patch[pod]["containers"][container]["requests"]["memory"] = format_quantity(
-                                new_requests["memory"], "Mi"
-                            )
-
+            if pod_patch.containers:
+                pods_to_patch.append(pod_patch)
         return pods_to_patch
 
     @staticmethod
-    async def _patch_pod(namespace: str, pod_name: str, containers: dict[str, Any]):
+    @inject
+    async def _patch_pod(
+        pod_patch: PodPatch, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ):
         try:
-            async with ApiClient() as api:
-                v1 = client.CoreV1Api(api)
-
-                pod_patch_body = {
-                    "spec": {
-                        "containers": [
-                            {"name": container_name, "resources": resources}
-                            for container_name, resources in containers.items()
-                        ]
-                    }
-                }
-
-                print(pod_patch_body)
-
-                print(f"Patching pod {pod_name} setting containers {containers}")
-                await v1.patch_namespaced_pod(
-                    pod_name,
-                    namespace,
-                    pod_patch_body,
-                    _content_type="application/json-patch+json",  # (optional, default if patch is a list)
-                )
+            await kubernetes_client.patch_pod(pod_patch)
         except Exception as e:
             print(f"Error: {e}")

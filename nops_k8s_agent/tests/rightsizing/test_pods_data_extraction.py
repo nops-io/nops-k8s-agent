@@ -25,8 +25,14 @@ async def test_pods_patching(
 
     assert rightsize_command.nops_configs == {"opencost": {"opencost": {"policy": {"threshold_percentage": 0.1}}}}
     patch_k8s_core_api.patch_namespaced_pod.assert_called_once_with(
-        "opencost-1234",
-        "opencost",
-        {"spec": {"containers": [{"name": "opencost", "resources": {"requests": {"cpu": "320m", "memory": "70Mi"}}}]}},
+        **{
+            "name": "opencost-1234",
+            "namespace": "opencost",
+            "body": {
+                "spec": {
+                    "containers": [{"name": "opencost", "resources": {"requests": {"cpu": "320m", "memory": "70Mi"}}}]
+                }
+            },
+        },
         _content_type="application/json-patch+json",
     )

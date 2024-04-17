@@ -261,7 +261,7 @@ def patch_k8s_core_api():
         if namespace == "opencost" and label_selector=="app.kubernetes.io/instance=opencost":
             # Setup the return values of the mock methods and attributes
             mock_metadata = Mock()
-            mock_metadata.configure_mock(name="opencost-1234")
+            mock_metadata.configure_mock(name="opencost-1234", namespace="opencost")
             containers = []
 
             for i in range(1):
@@ -313,7 +313,7 @@ def patch_k8s_list_namespaced_deployment():
         if namespace == "opencost":
             # Setup the return values of the mock methods and attributes
             mock_metadata = Mock()
-            mock_metadata.configure_mock(name="opencost")
+            mock_metadata.configure_mock(name="opencost", namespace="opencost")
             mock_selector = Mock()
             mock_selector.configure_mock(match_labels={"app.kubernetes.io/instance": "opencost"})
             mock_items = Mock()

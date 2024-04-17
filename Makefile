@@ -14,7 +14,7 @@ exec:
 shell:
 	kubectl -n nops-k8s-agent exec -it deploy/nops-k8s-agent -- python ./manage.py shell_plus --ipython
 test:
-	kubectl -n nops-k8s-agent exec -it deploy/nops-k8s-agent -- pytest 
+	kubectl -n nops-k8s-agent exec -it deploy/nops-k8s-agent -- pytest
 test_prometheus:
 	kubectl -n nops-k8s-agent exec -it deploy/nops-k8s-agent -- pytest --runslow
 
