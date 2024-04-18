@@ -18,8 +18,6 @@ def get_config(
     port=None,
     window_start=None,
     window_end=None,
-    s3_bucket=None,
-    file_key_prefix=None,
     aggregate_by=None,
     step=None,
 ):
@@ -29,32 +27,25 @@ def get_config(
 
     Parameters:
     - hostname (str): Hostname for the OpenCost service,
-                      defaults to the 'OPENCOST_PARQUET_SVC_HOSTNAME' environment variable,
+                      defaults to the 'NOPSCOST_SVC_HOSTNAME' environment variable,
                       or 'localhost' if the environment variable is not set.
     - port (int): Port number for the OpenCost service,
-                  defaults to the 'OPENCOST_PARQUET_SVC_PORT' environment variable,
+                  defaults to the 'NOPSCOST_SVC_PORT' environment variable,
                   or 9003 if the environment variable is not set.
     - window_start (str): Start datetime window for fetching data, in ISO format,
-                          defaults to the 'OPENCOST_PARQUET_WINDOW_START' environment variable,
-                          or yesterday's date at 00:00:00 if not set.
+                          defaults to yesterday's date at 00:00:00 if not set.
     - window_end (str): End datetime window for fetching data, in ISO format,
-                        defaults to the 'OPENCOST_PARQUET_WINDOW_END' environment variable,
-                        or yesterday's date at 23:59:59 if not set.
-    - s3_bucket (str): S3 bucket name to upload the parquet file,
-                       defaults to the 'OPENCOST_PARQUET_S3_BUCKET' environment variable.
-    - file_key_prefix (str): Prefix for file keys within the S3 bucket or local filesystem,
-                             defaults to the 'OPENCOST_PARQUET_FILE_KEY_PREFIX' environment
-                             variable, or '/tmp/' if not set.
+                        defaults to yesterday's date at 23:59:59 if not set.
     - aggregate_by (str): Criteria for aggregating data, separated by commas,
-                          defaults to the 'OPENCOST_PARQUET_AGGREGATE' environment variable,
-                          or 'namespace,pod,container' if not set.
+                          defaults to the 'NOPSCOST_AGGREGATE' environment variable,
+                          or 'cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container' if not set.
     - step (str): Granularity for the data aggregation,
-                  defaults to the 'OPENCOST_PARQUET_STEP' environment variable,
+                  defaults to the 'NOPSCOST_STEP' environment variable,
                   or '1h' if not set.
 
     Returns:
-    - dict: Configuration dictionary with keys for 'url', 'params', 's3_bucket',
-            'file_key_prefix', 'data_types', 'ignored_alloc_keys', and 'rename_columns_config'.
+    - dict: Configuration dictionary with keys for 'url', 'params',
+         'data_types', 'ignored_alloc_keys', and 'rename_columns_config'.
     """
     config = {}
 
@@ -62,29 +53,18 @@ def get_config(
     # variable is also ignored.
     # This is done, so passing parameters have precedence to environment variables.
     if hostname is None:
-        hostname = os.environ.get("OPENCOST_PARQUET_SVC_HOSTNAME", "opencost.opencost.svc.cluster.local")
+        hostname = os.environ.get("NOPSCOST_SVC_HOSTNAME", "nops-cost.nops-cost.svc.cluster.local")
     if port is None:
-        port = int(os.environ.get("OPENCOST_PARQUET_SVC_PORT", 9003))
-    if window_start is None:
-        window_start = os.environ.get("OPENCOST_PARQUET_WINDOW_START", None)
-    if window_end is None:
-        window_end = os.environ.get("OPENCOST_PARQUET_WINDOW_END", None)
-    if s3_bucket is None:
-        s3_bucket = os.environ.get("OPENCOST_PARQUET_S3_BUCKET", None)
-    if file_key_prefix is None:
-        file_key_prefix = os.environ.get("OPENCOST_PARQUET_FILE_KEY_PREFIX", "/tmp/")
+        port = int(os.environ.get("NOPSCOST_SVC_PORT", 9003))
     if aggregate_by is None:
         aggregate_by = os.environ.get(
-            "OPENCOST_PARQUET_AGGREGATE",
-            "cluster,namespace,deployment,statefulset,job,controller,controllerKind,label,annotation,pod,container",
+            "NOPSCOST_AGGREGATE",
+            "cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container",
         )
     if step is None:
-        step = os.environ.get("OPENCOST_PARQUET_STEP", "1h")
+        step = os.environ.get("NOPSCOST_STEP", "1h")
 
-    if s3_bucket is not None:
-        config["s3_bucket"] = s3_bucket
     config["url"] = f"http://{hostname}:{port}/allocation/compute"
-    config["file_key_prefix"] = file_key_prefix
     # If window is not specified assume we want yesterday data.
     if window_start is None or window_end is None:
         yesterday = datetime.now() - timedelta(1)
@@ -95,7 +75,7 @@ def get_config(
     config["params"] = (
         ("window", window),
         ("aggregate", aggregate_by),
-        ("includeIdle", "false"),
+        ("includeIdle", "true"),
         ("idleByNode", "false"),
         ("includeProportionalAssetResourceCosts", "false"),
         ("format", "json"),
@@ -253,22 +233,26 @@ def process_result(result, config):
         return None
     except KeyError as err:
         print(f"Key error: {err}")
+        import traceback
+
+        traceback_info = traceback.format_exc()
+        print(traceback_info)
         return None
     return processed_data
 
 
-def main_command(s3_bucket=None, s3_prefix=None, cluster_arn=None, now=None):
+def main_command():
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
     """
     print("Starting run")
-    config = get_config(window_start=now, s3_bucket=s3_bucket, file_key_prefix=s3_prefix)
+    config = get_config()
     print(config)
-    print("Retrieving data from opencost api")
+    print("Retrieving data from nops-cost api")
     result = request_data(config)
     if result:
-        print("Opencost data retrieved successfully")
+        print("nOpsCost data retrieved successfully")
         print("Processing the data")
         processed_data = process_result(result, config)
         return processed_data

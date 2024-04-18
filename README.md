@@ -9,14 +9,7 @@
   * [make](#make)
 - [Easy Install](#easy-install)
 - [Development Setup](#development-setup)
-- [Prerequisites](#prerequisites)
-  * [nOps Account](#nops-account)
-  * [Create Namespace](#create-namespace)
-  * [Deploy Prometheus](#deploy-prometheus)
-  * [Create S3 Bucket and IAM Access Key](#create-s3-bucket-and-iam-access-key)
-  * [Secret Creation](#secret-creation)
-  * [Configure values.yaml](#configure-valuesyaml)
-- [Deployment](#deployment)
+- [Agent Deployment](#agent-deployment)
   * [Option 1: Deploy Agent From Source Code](#deploy-agent-from-source-code)
   * [Option 2: Deploy Agent via Helm Repo (recommended)](#deploy-agent-via-helm-repo)
 - [Configure nOps Integration](#configure-nops-integration)
@@ -36,6 +29,7 @@ This document guides you through the setup and deployment process, ensuring a sm
 
 ## Easy Install
 
+
 You can quickly install the agent and all it's requirements and performing all the steps downloading the [easy-install.zip](https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/extras/easy-install.zip).
 It contains all the yaml files for helm configurations as well as the cf-bucket-access-key.yaml CloudFormation template to quickly create a bucket and a user with credentials for the agent.
 
@@ -43,13 +37,12 @@ It contains all the yaml files for helm configurations as well as the cf-bucket-
 
 - Download and extract easy-install.zip
 - Use cf-bucket-access-key.yaml CloudFormation template to create a S3 bucket and a User for the agent
-- Replace the values in values.yaml for:
-  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
-  - APP_AWS_S3_BUCKET
-  - APP_AWS_S3_PREFIX
 - Replace the values on install.sh script for:
   - AWS_ACCESS_KEY_ID
   - AWS_SECRET_ACCESS_KEY
+  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
+  - APP_AWS_S3_BUCKET
+  - APP_AWS_S3_PREFIX
 - Run the install.sh script
   - if succesful, you should see "Proceed to nOps Dashboard and finish the integration."
 - Go to nOps Dashboard integration Container Cost and setup the bucket 
@@ -69,7 +62,7 @@ These tools are essential for setting up your development environment and will b
 
 ---
 
-## Development Setup Instructions
+## Development Setup
 
 Follow these steps to set up your development environment for the nOps Kubernetes Agent:
 
@@ -103,105 +96,17 @@ By following these steps, you'll have a development environment set up for the n
 
 ---
 
-## Prerequisites
-
-Before proceeding with the nOps Kubernetes Agent setup, ensure you meet the following prerequisites:
-
-- **nOps Account and Kubernetes Cluster**:
-  - **nOps Account**: An active nOps account is required. If you don't have one, sign up at the nOps website.
-  - **Kubernetes Cluster**: Ensure access to a Kubernetes cluster (version v1.23.6+ recommended) for deploying the agent.
-  - **kubectl** and **helm** installed with kubectl pointing to your cluster. You can verify the cluster using the following command
-    ```shell
-      kubectl config current-context
-    ``` 
-    and verify helm is installed by running
-    ```shell
-      helm version
-    ```
-
-- **Environment Setup**:
-  - **Step 1: Namespace**: Create a dedicated namespace in your Kubernetes cluster for the nOps Kubernetes Agent for better organization and security.
-    ```shell
-    kubectl create namespace nops-k8s-agent
-    kubectl config set-context --current --namespace=nops-k8s-agent
-    ```
-
-  - **Step 2: S3 Bucket**: Create an S3 bucket for storing container cost export data. Ensure the nOps Kubernetes Agent has write permissions via an IAM Access Key or Service Role.
-  You can find a CloudFormation template to help with that step on the extras folder.
-
-  - **Step 3: Kubernetes Secret**: Create a secret in Kubernetes to store AWS credentials, allowing the agent to write to the S3 bucket.
-    Linux:
-    ```shell
-    kubectl create secret generic nops-k8s-agent \
-    --from-literal=aws_access_key_id=<YourAccessKeyId> \
-    --from-literal=aws_secret_access_key=<YourSecretAccessKey> \
-    --namespace=nops-k8s-agent
-    ```
-
-    Windows PowerShell:
-    ```shell
-    kubectl create secret generic nops-k8s-agent `
-    --from-literal=aws_access_key_id=<YourAccessKeyId> `
-    --from-literal=aws_secret_access_key=<YourSecretAccessKey> `
-    --namespace=nops-k8s-agent
-    ```
-
-  - **Step 4: Prometheus**: The agent requires Prometheus for metrics collection. If not already installed, deploy Prometheus in your cluster using Helm. This command provides the extraScrapeConfigs.yaml which is required for this setup.
-   
-    Linux:
-    ```shell
-    helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus \
-      --namespace prometheus-system --create-namespace \
-      --set prometheus-pushgateway.enabled=false \
-      --set alertmanager.enabled=false \
-      -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
-    ```
-
-    Windows PowerShell:
-    ```shell
-    helm install prometheus --repo https://prometheus-community.github.io/helm-charts prometheus `
-    --namespace prometheus-system --create-namespace `
-    --set prometheus-pushgateway.enabled=false `
-    --set alertmanager.enabled=false `
-    -f https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml
-    ```
-
-
-  - **Step 5: OpenCost**: The agent leverages OpenCost for labels and extra calculations. In this command we provide a default configuration for it.
-  
-  Linux:
-  ```shell
-    helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost \
-      --namespace opencost  --create-namespace -f ./charts/opencost/opencost_local.yaml
-  ```
-
-  Windows PowerShell:
-  ```shell
-    helm install opencost --repo https://opencost.github.io/opencost-helm-chart opencost `
-    --namespace opencost --create-namespace -f .\charts\opencost\opencost_local.yaml
-  ```
-
-  
-
-Completing these steps ensures your environment is correctly prepared for the nOps Kubernetes Agent deployment.
-
-
----
-
 ### Configure values.yaml
 
 There are required variables:
 
-- APP_PROMETHEUS_SERVER_ENDPOINT - Prometheus server endpoint
 - APP_NOPS_K8S_AGENT_CLUSTER_ARN - needs to match with your cluster arn (starting with arn ending with cluster name)
 - APP_AWS_S3_BUCKET - S3 Bucket that this service has write permission
 - APP_AWS_S3_PREFIX - S3 Prefix path include trailing slash
-- NOPS_K8S_AGENT_PROM_TOKEN - (Optional) provide if your prometheus is protected by token
 
 
 Example configuration
 ```
-APP_PROMETHEUS_SERVER_ENDPOINT: "http://prometheus-server.prometheus-system.svc.cluster.local:80"
 APP_NOPS_K8S_AGENT_CLUSTER_ARN: "arn:aws:eks:us-west-2:12345679012:cluster/nOps-Testing-EKS"
 APP_AWS_S3_BUCKET: "container-cost-export-customer-abc"
 APP_AWS_S3_PREFIX: "test-container-cost/"
@@ -209,11 +114,28 @@ APP_AWS_S3_PREFIX: "test-container-cost/"
 
 ---
 
-## Deployment
+## Agent Deployment
 
 There are 2 options for deployment
 
-### Option 1: Deploy Agent From Source Code
+### Option 1: Deploy Agent via Helm Repo (recommended)
+
+Linux:
+```shell
+    helm \
+      install nops-k8s-agent --repo  https://nops-io.github.io/nops-k8s-agent \
+      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
+```
+Windows PowerShell:
+```shell
+    helm `
+      install nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent `
+      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
+
+```
+
+
+### Option 2: Deploy Agent From Source Code
 
 Using helm chart for deployment from a cloned repository.
   Linux:
@@ -237,23 +159,6 @@ Using helm chart for deployment from a cloned repository.
     --set image.tag=deploy `
     --set env_variables.APP_ENV=live `
     --wait --timeout=300s
-```
-
-
-### Option 2: Deploy Agent via Helm Repo (recommended)
-
-Linux:
-```shell
-    helm \
-      install nops-k8s-agent --repo  https://nops-io.github.io/nops-k8s-agent \
-      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
-```
-Windows PowerShell:
-```shell
-    helm `
-      install nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent `
-      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
-
 ```
 
 
