@@ -11,7 +11,7 @@ from nops_k8s_agent.container_cost.deployment_metrics import DeploymentMetrics
 from nops_k8s_agent.container_cost.job_metrics import JobMetrics
 from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
 from nops_k8s_agent.container_cost.node_metrics import NodeMetrics
-from nops_k8s_agent.container_cost.opencost.opencost_parquet_exporter import main_command
+from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import main_command
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
@@ -24,12 +24,12 @@ class Command(BaseCommand):
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
 
-    def export_opencost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
+    def export_nopscost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        processed_data = main_command(s3_bucket=s3_bucket, s3_prefix=s3_prefix, cluster_arn=cluster_arn, now=start_time)
-        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/open_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_opencost.parquet"
+        processed_data = main_command()
+        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
         if processed_data is not None and not processed_data.empty:
-            print(f"\nSaving opencost data to {path}")
+            print(f"\nSaving nops-cost data to {path}")
             processed_data.to_parquet(path)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
@@ -92,5 +92,5 @@ class Command(BaseCommand):
         else:
             # Default to the previous hour
             now = dt.datetime.now()
-            self.export_opencost_data(s3_bucket, s3_prefix, cluster_arn, now)
+            self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
             self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
