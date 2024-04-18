@@ -27,26 +27,24 @@ def get_config(
 
     Parameters:
     - hostname (str): Hostname for the OpenCost service,
-                      defaults to the 'OPENCOST_PARQUET_SVC_HOSTNAME' environment variable,
+                      defaults to the 'NOPSCOST_SVC_HOSTNAME' environment variable,
                       or 'localhost' if the environment variable is not set.
     - port (int): Port number for the OpenCost service,
-                  defaults to the 'OPENCOST_PARQUET_SVC_PORT' environment variable,
+                  defaults to the 'NOPSCOST_SVC_PORT' environment variable,
                   or 9003 if the environment variable is not set.
     - window_start (str): Start datetime window for fetching data, in ISO format,
-                          defaults to the 'OPENCOST_PARQUET_WINDOW_START' environment variable,
-                          or yesterday's date at 00:00:00 if not set.
+                          defaults to yesterday's date at 00:00:00 if not set.
     - window_end (str): End datetime window for fetching data, in ISO format,
-                        defaults to the 'OPENCOST_PARQUET_WINDOW_END' environment variable,
-                        or yesterday's date at 23:59:59 if not set.
+                        defaults to yesterday's date at 23:59:59 if not set.
     - aggregate_by (str): Criteria for aggregating data, separated by commas,
-                          defaults to the 'OPENCOST_PARQUET_AGGREGATE' environment variable,
-                          or 'namespace,pod,container' if not set.
+                          defaults to the 'NOPSCOST_AGGREGATE' environment variable,
+                          or 'cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container' if not set.
     - step (str): Granularity for the data aggregation,
-                  defaults to the 'OPENCOST_PARQUET_STEP' environment variable,
+                  defaults to the 'NOPSCOST_STEP' environment variable,
                   or '1h' if not set.
 
     Returns:
-    - dict: Configuration dictionary with keys for 'url', 'params', 's3_bucket',
+    - dict: Configuration dictionary with keys for 'url', 'params',
          'data_types', 'ignored_alloc_keys', and 'rename_columns_config'.
     """
     config = {}
@@ -254,7 +252,7 @@ def main_command():
     print("Retrieving data from nops-cost api")
     result = request_data(config)
     if result:
-        print("Opencost data retrieved successfully")
+        print("nOpsCost data retrieved successfully")
         print("Processing the data")
         processed_data = process_result(result, config)
         return processed_data
