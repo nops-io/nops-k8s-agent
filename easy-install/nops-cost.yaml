@@ -333,7 +333,7 @@ opencost:
 
   ui:
     # -- Enable OpenCost UI
-    enabled: true #
+    enabled: false #
     image:
       # -- UI container image registry
       registry: ghcr.io
