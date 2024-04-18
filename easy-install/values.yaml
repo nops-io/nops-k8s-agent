@@ -1,0 +1,38 @@
+# Default values for nops-k8s-agent.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+image:
+  repository: ghcr.io/nops-io/nops-k8s-agent
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "deploy"
+
+ingress:
+  enabled: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+serviceAccount:
+  create: true
+
+cronjob:
+  schedule: "5 * * * *"
+
+env_variables:
+  # Required paramters
+  APP_PROMETHEUS_SERVER_ENDPOINT: "http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
+  APP_NOPS_K8S_AGENT_CLUSTER_ARN: "DEMO"
+  APP_AWS_S3_BUCKET: ""
+  APP_AWS_S3_PREFIX: ""
+  # Optional parameters
+  APP_ENV: "live"
+  APP_NOPS_K8S_AGENT_TIMEOUT: "120"
+  APP_NOPS_K8S_AGENT_PROM_TOKEN: ""
+  APP_DEBUG: False
+  # set from helm command line
+  AWS_DEFAULT_REGION: "us-west-2"
+  # nOpsCost
+  NOPSCOST_SVC_HOSTNAME: "nops-cost.nops-cost.svc.cluster.local"
+  NOPSCOST_SVC_PORT: 9003
