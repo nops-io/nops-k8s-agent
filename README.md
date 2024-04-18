@@ -36,8 +36,8 @@ This document guides you through the setup and deployment process, ensuring a sm
 
 ## Easy Install
 
-You can quickly install the agent and all it's requirements and performing all the steps downloading the [easy-install.zip](https://github.com/nops-io/nops-k8s-agent/releases/download/nops-k8s-agent-0.4.2/easy-install.zip) file on the release.
-It has all the yaml files for helm configurations as well as the cf-bucket-access-key.yaml CloudFormation template to quickly create a bucket and a user with credentials for the agent.
+You can quickly install the agent and all it's requirements and performing all the steps downloading the [easy-install.zip](https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/extras/easy-install.zip).
+It contains all the yaml files for helm configurations as well as the cf-bucket-access-key.yaml CloudFormation template to quickly create a bucket and a user with credentials for the agent.
 
 **Make sure you have helm and kubectl installed and you are pointing to the correct cluster.**
 
