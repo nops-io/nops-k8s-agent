@@ -9,7 +9,7 @@
   * [make](#make)
 - [Easy Install](#easy-install)
 - [Development Setup](#development-setup)
-- [Deployment](#deployment)
+- [Agent Deployment](#agent-deployment)
   * [Option 1: Deploy Agent From Source Code](#deploy-agent-from-source-code)
   * [Option 2: Deploy Agent via Helm Repo (recommended)](#deploy-agent-via-helm-repo)
 - [Configure nOps Integration](#configure-nops-integration)
@@ -36,13 +36,12 @@ It contains all the yaml files for helm configurations as well as the cf-bucket-
 
 - Download and extract easy-install.zip
 - Use cf-bucket-access-key.yaml CloudFormation template to create a S3 bucket and a User for the agent
-- Replace the values in values.yaml for:
-  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
-  - APP_AWS_S3_BUCKET
-  - APP_AWS_S3_PREFIX
 - Replace the values on install.sh script for:
   - AWS_ACCESS_KEY_ID
   - AWS_SECRET_ACCESS_KEY
+  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
+  - APP_AWS_S3_BUCKET
+  - APP_AWS_S3_PREFIX
 - Run the install.sh script
   - if succesful, you should see "Proceed to nOps Dashboard and finish the integration."
 - Go to nOps Dashboard integration Container Cost and setup the bucket 
@@ -62,7 +61,7 @@ These tools are essential for setting up your development environment and will b
 
 ---
 
-## Development Setup Instructions
+## Development Setup
 
 Follow these steps to set up your development environment for the nOps Kubernetes Agent:
 
