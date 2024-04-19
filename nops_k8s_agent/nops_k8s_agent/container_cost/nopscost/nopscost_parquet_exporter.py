@@ -8,6 +8,8 @@ import sys
 from datetime import datetime
 from datetime import timedelta
 
+from django.conf import settings
+
 import botocore.exceptions as boto_exceptions
 import pandas as pd
 import requests
@@ -214,7 +216,7 @@ def process_result(result, config):
                 df["start"] = pd.to_datetime(df["start"]).apply(lambda x: x.timestamp())
             if "end" in df.columns:
                 df["end"] = pd.to_datetime(df["end"]).apply(lambda x: x.timestamp())
-
+            df["cluster_arn"] = settings.NOPS_K8S_AGENT_CLUSTER_ARN
             frames.append(df)
         processed_data = pd.concat(frames)
         processed_data.rename(columns=config["rename_columns_config"], inplace=True)
