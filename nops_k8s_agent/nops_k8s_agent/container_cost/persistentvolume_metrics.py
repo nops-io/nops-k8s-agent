@@ -13,6 +13,7 @@ class PersistentvolumeMetrics(BaseMetrics):
             "persistentvolume",
             "phase",
         ],
+        "kube_persistentvolume_info": ["persistentvolume", "ebs_volume_id", "storageclass"],
     }
     FILE_PREFIX = "persistentvolume_metrics"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_persistentvolume_metrics_0.parquet"
