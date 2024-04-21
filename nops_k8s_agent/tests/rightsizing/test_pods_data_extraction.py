@@ -17,6 +17,7 @@ def container():
 @pytest.mark.asyncio
 async def test_pods_patching(
     patch_skip_incluster_config_creation,
+    patch_k8s_feature_gates,
     patch_k8s_core_api,
     patch_k8s_list_namespaced_deployment,
 ):

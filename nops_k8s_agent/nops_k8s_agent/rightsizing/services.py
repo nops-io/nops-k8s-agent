@@ -1,10 +1,12 @@
 import os
+import re
 from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
 from kubernetes_asyncio import client
 from kubernetes_asyncio import config
+from kubernetes_asyncio.client import VersionInfo
 from kubernetes_asyncio.client import V1Deployment
 from kubernetes_asyncio.client import V1DeploymentList
 from kubernetes_asyncio.client import V1NamespaceList
@@ -25,6 +27,18 @@ class RightsizingClient(ABC):
 
 
 class KubernetesClient(ABC):
+    @abstractmethod
+    async def get_cluster_info(self) -> VersionInfo:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def in_place_pod_vertical_scaling_enabled(self) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_feature_gates_statuses(self) -> dict[str, bool]:
+        raise NotImplementedError
+
     @abstractmethod
     async def list_all_namespaces(self) -> V1NamespaceList:
         raise NotImplementedError
@@ -88,6 +102,34 @@ class RightsizingClientMock(RightsizingClient):
 class KubernetesClientService(KubernetesClient):
     def __init__(self) -> None:
         config.load_incluster_config()
+
+    async def get_cluster_info(self) -> VersionInfo:
+        async with ApiClient() as api:
+            version_client = client.VersionApi(api)
+            version_info = await version_client.get_code()
+            return version_info
+
+    async def in_place_pod_vertical_scaling_enabled(self) -> bool:
+        return (await self.get_feature_gates_statuses()).get("InPlacePodVerticalScaling") is True
+
+    async def get_feature_gates_statuses(self) -> dict[str, bool]:
+        feature_statuses = {}
+        try:
+            async with ApiClient() as api:
+                api_client = client.ApiClient(api)
+                api_response = await api_client.call_api(
+                    "/metrics", "GET", auth_settings=["BearerToken"], response_type="str", _preload_content=False
+                )
+                metrics = api_response[0].data.decode('utf-8').split("\n")
+
+            feature_gates = [metric for metric in metrics if metric.startswith("kubernetes_feature_enabled")]
+            for feature_gate in feature_gates:
+                match = re.search(r"name=\"([^\"]*)\"", feature_gate)
+                if match:
+                    feature_statuses[match.group(1)] = feature_gate[-1] == "1"
+        except Exception as e:
+            print(f"get_feature_gates_statuses error {e}")
+        return feature_statuses
 
     async def list_all_namespaces(self) -> V1NamespaceList:
         async with ApiClient() as api:

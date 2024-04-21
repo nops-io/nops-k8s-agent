@@ -43,37 +43,16 @@ class Command(BaseCommand):
             tasks.append(self.process_deployment(deployment))
         await asyncio.gather(*tasks)
 
-    async def process_deployment(self, deployment: V1Deployment):
-        pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
-
-        tasks = []
-        for pod_patch in pods_patches:
-            tasks.append(self._patch_pod(pod_patch))
-        await asyncio.gather(*tasks)
-
-    @staticmethod
     @inject
-    async def _get_nops_configs(
-        rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client],
-    ) -> dict[str, Any]:
-        return await rightsizing_client.get_configs()
+    async def process_deployment(self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]):
+        # Live-patch pods if this feature is enabled
+        if await kubernetes_client.in_place_pod_vertical_scaling_enabled():
+            pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
 
-    @staticmethod
-    @inject
-    async def _get_container_recommendations(
-        namespace: str, rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client]
-    ) -> dict[str, Any]:
-        return await rightsizing_client.get_namespace_recommendations(namespace=namespace)
-
-    def _deployment_policy(self, namespace: str, deployment_name: str) -> None | dict:
-        return self.nops_configs.get(namespace, {}).get(deployment_name, {}).get("policy")
-
-    def _deployment_policy_requests_change_threshold(self, deployment: V1Deployment) -> float:
-        policy = self._deployment_policy(deployment.metadata.namespace, deployment.metadata.name)
-        if isinstance(policy, dict):
-            return policy.get("threshold_percentage", 0.0)
-        else:
-            return 0.0
+            tasks = []
+            for pod_patch in pods_patches:
+                tasks.append(self._patch_pod(pod_patch))
+            await asyncio.gather(*tasks)
 
     @inject
     async def _list_deployments(
@@ -140,3 +119,27 @@ class Command(BaseCommand):
             await kubernetes_client.patch_pod(pod_patch)
         except Exception as e:
             print(f"Error: {e}")
+
+    @staticmethod
+    @inject
+    async def _get_nops_configs(
+            rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client],
+    ) -> dict[str, Any]:
+        return await rightsizing_client.get_configs()
+
+    @staticmethod
+    @inject
+    async def _get_container_recommendations(
+            namespace: str, rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client]
+    ) -> dict[str, Any]:
+        return await rightsizing_client.get_namespace_recommendations(namespace=namespace)
+
+    def _deployment_policy(self, namespace: str, deployment_name: str) -> None | dict:
+        return self.nops_configs.get(namespace, {}).get(deployment_name, {}).get("policy")
+
+    def _deployment_policy_requests_change_threshold(self, deployment: V1Deployment) -> float:
+        policy = self._deployment_policy(deployment.metadata.namespace, deployment.metadata.name)
+        if isinstance(policy, dict):
+            return policy.get("threshold_percentage", 0.0)
+        else:
+            return 0.0

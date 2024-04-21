@@ -341,3 +341,24 @@ def patch_k8s_list_namespaced_deployment():
 
     # Clean up: Restore the original AppsV1Api
     kubernetes_asyncio.client.AppsV1Api = original_apps_v1_api
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_feature_gates():
+    async def call_api_side_effect(path, method, auth_settings=None, response_type=None, _preload_content=None):
+        if path == "/metrics" and method == "GET":
+            return [AsyncMock(data="kubernetes_feature_enabled{name=\"InPlacePodVerticalScaling\",stage=\"\"} 1".encode('utf-8'))]
+
+    original_api_client = kubernetes_asyncio.client.ApiClient
+    mock_api = Mock()
+
+    mock_call_api = AsyncMock()
+    mock_call_api.side_effect = call_api_side_effect
+    mock_api.call_api = mock_call_api
+
+    kubernetes_asyncio.client.ApiClient = Mock(return_value=mock_api)
+
+    yield mock_api
+
+    kubernetes_asyncio.client.ApiClient = original_api_client
+

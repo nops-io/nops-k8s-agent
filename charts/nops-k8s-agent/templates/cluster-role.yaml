@@ -3,6 +3,12 @@ kind: ClusterRole
 metadata:
   name: nops-k8s-agent
 rules:
+  {{ if .Values.env_variables.APP_NOPS_ENABLE_POD_RIGHTSIZING }}
+  - verbs:
+      - get
+    nonResourceURLs:
+      - /metrics
+  {{ end }}
   - apiGroups:
       - ''
     resources:
