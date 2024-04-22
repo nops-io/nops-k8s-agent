@@ -7,6 +7,7 @@ kubernetes_asyncio==29.0.0
 dependency_injector==4.41.0
 pytest==7.4.4
 pytest-asyncio==0.23.4
+async-lru==2.0.4
 pyarrow
 loguru
 django-extensions

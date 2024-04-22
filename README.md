@@ -9,6 +9,21 @@
   * [k3d (for development)](https://k3d.io/v5.1.0/)
   * [make](#make)
 - [Development Setup](#development-setup)
+<<<<<<< HEAD
+=======
+- [Prerequisites](#prerequisites)
+  * [nOps Account](#nops-account)
+  * [Create Namespace](#create-namespace)
+  * [Deploy Prometheus](#deploy-prometheus)
+  * [Create S3 Bucket and IAM Access Key](#create-s3-bucket-and-iam-access-key)
+  * [Secret Creation](#secret-creation)
+  * [Configure values.yaml](#configure-valuesyaml)
+- [Deployment](#deployment)
+  * [Option 1: Deploy Agent From Source Code](#deploy-agent-from-source-code)
+  * [Option 2: Deploy Agent via Helm Repo (recommended)](#deploy-agent-via-helm-repo)
+- [Configure nOps Integration](#configure-nops-integration)
+- [Pod Rightsizing](wiki/pod_rightsizing/rightsizing.md)
+>>>>>>> 29904bd (Consider Namespace Limit Ranges before patching)
 
 # Introduction to nOps Kubernetes Agent
 

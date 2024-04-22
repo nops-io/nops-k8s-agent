@@ -4,9 +4,10 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
+from kubernetes.utils.quantity import parse_quantity
 from kubernetes_asyncio import client
 from kubernetes_asyncio import config
-from kubernetes_asyncio.client import VersionInfo
+from kubernetes_asyncio.client import VersionInfo, V1LimitRangeList, V1LimitRangeItem
 from kubernetes_asyncio.client import V1Deployment
 from kubernetes_asyncio.client import V1DeploymentList
 from kubernetes_asyncio.client import V1NamespaceList
@@ -14,6 +15,7 @@ from kubernetes_asyncio.client import V1Pod
 from kubernetes_asyncio.client.api_client import ApiClient
 
 from nops_k8s_agent.rightsizing.models import PodPatch
+from async_lru import alru_cache
 
 
 class RightsizingClient(ABC):
@@ -48,6 +50,20 @@ class KubernetesClient(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def list_namespace_limit_ranges(self, namespace_name: str) -> V1LimitRangeList:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def container_min_max_ranges(self, namespace_name: str) -> V1LimitRangeItem:
+        """
+        Iterates all namespace Limit Ranges to find the strictest Limit Range all containers should follow.
+        Args:
+            namespace_name:
+        Returns: V1LimitRangeItem
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     async def list_deployment_pods(self, deployment: V1Deployment) -> list[V1Pod]:
         raise NotImplementedError
 
@@ -65,6 +81,7 @@ class RightsizingClientService(RightsizingClient):
 
 
 class RightsizingClientMock(RightsizingClient):
+    @alru_cache(ttl=100)
     async def get_configs(self) -> dict[str, Any]:
         """
         MOCKED! Gets the list of nOps configured deployments for a cluster
@@ -81,6 +98,7 @@ class RightsizingClientMock(RightsizingClient):
         """
         return {"opencost": {"opencost": {"policy": {"threshold_percentage": 0.1}}}}
 
+    @alru_cache(ttl=100)
     async def get_namespace_recommendations(self, namespace: str) -> dict[str, Any]:
         """
         MOCKED! Gets limits/requests recommendations for containers by deployment
@@ -103,6 +121,7 @@ class KubernetesClientService(KubernetesClient):
     def __init__(self) -> None:
         config.load_incluster_config()
 
+    @alru_cache(ttl=100)
     async def get_cluster_info(self) -> VersionInfo:
         async with ApiClient() as api:
             version_client = client.VersionApi(api)
@@ -112,6 +131,7 @@ class KubernetesClientService(KubernetesClient):
     async def in_place_pod_vertical_scaling_enabled(self) -> bool:
         return (await self.get_feature_gates_statuses()).get("InPlacePodVerticalScaling") is True
 
+    @alru_cache(ttl=100)
     async def get_feature_gates_statuses(self) -> dict[str, bool]:
         feature_statuses = {}
         try:
@@ -140,6 +160,37 @@ class KubernetesClientService(KubernetesClient):
         async with ApiClient() as api:
             apps_v1 = client.AppsV1Api(api)
             return await apps_v1.list_namespaced_deployment(namespace=namespace_name, watch=False)
+
+    @alru_cache(ttl=100)
+    async def list_namespace_limit_ranges(self, namespace_name: str) -> V1LimitRangeList:
+        async with ApiClient() as api:
+            v1_client = client.CoreV1Api(api)
+            return await v1_client.list_namespaced_limit_range(namespace=namespace_name)
+
+    async def container_min_max_ranges(self, namespace_name: str) -> V1LimitRangeItem:
+        """
+        Iterates all namespace Limit Ranges to find the strictest Limit Range all containers should follow.
+        Args:
+            namespace_name:
+        Returns: V1LimitRangeItem
+        """
+        result = V1LimitRangeItem(
+            max={"cpu": "999E", "memory": "999E"},
+            min={"cpu": "0", "memory": "0"},
+            type="Container",
+        )
+        for limit_range in (await self.list_namespace_limit_ranges(namespace_name)).items:
+            for limit in limit_range.spec.limits:
+                if limit.type == "Container":
+                    if parse_quantity(limit.max["cpu"]) > parse_quantity(result.max["cpu"]):
+                        result.max["cpu"] = limit.max["cpu"]
+                    if parse_quantity(limit.max["memory"]) > parse_quantity(result.max["memory"]):
+                        result.max["memory"] = limit.max["memory"]
+                    if parse_quantity(limit.min["cpu"]) < parse_quantity(result.min["cpu"]):
+                        result.min["cpu"] = limit.min["cpu"]
+                    if parse_quantity(limit.min["memory"]) < parse_quantity(result.min["memory"]):
+                        result.min["memory"] = limit.min["memory"]
+        return result
 
     async def list_deployment_pods(self, deployment: V1Deployment) -> list[V1Pod]:
         pods: list[V1Pod] = []

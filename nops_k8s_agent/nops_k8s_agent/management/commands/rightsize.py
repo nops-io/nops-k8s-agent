@@ -6,7 +6,8 @@ from django.core.management.base import BaseCommand
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
-from kubernetes_asyncio.client import V1Deployment
+from kubernetes.utils.quantity import parse_quantity
+from kubernetes_asyncio.client import V1Deployment, V1LimitRangeItem
 from kubernetes_asyncio.client import V1Pod
 
 from nops_k8s_agent.rightsizing.containers import Container
@@ -44,7 +45,9 @@ class Command(BaseCommand):
         await asyncio.gather(*tasks)
 
     @inject
-    async def process_deployment(self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]):
+    async def process_deployment(
+        self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ):
         # Live-patch pods if this feature is enabled
         if await kubernetes_client.in_place_pod_vertical_scaling_enabled():
             pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
@@ -85,6 +88,10 @@ class Command(BaseCommand):
         if not deployment_recommendations:
             return pods_to_patch
 
+        container_min_max_ranges: V1LimitRangeItem = await kubernetes_client.container_min_max_ranges(
+            namespace_name=deployment.metadata.namespace
+        )
+
         for pod in deployment_pods:
             pod_patch = PodPatch(pod_name=pod.metadata.name, pod_namespace=pod.metadata.namespace, containers=[])
 
@@ -97,6 +104,26 @@ class Command(BaseCommand):
 
                 recommended_cpu_requests = Decimal(container_requests_recommendations.get("cpu", 0))
                 recommended_ram_requests = Decimal(container_requests_recommendations.get("memory", 0))
+
+                if not (
+                    parse_quantity(container_min_max_ranges.max.get("cpu", "999E"))
+                    > recommended_cpu_requests
+                    > parse_quantity(container_min_max_ranges.min.get("cpu", "0"))
+                ):
+                    print(
+                        f"Skipping container because {recommended_cpu_requests=} conflicts with {container_min_max_ranges=}"
+                    )
+                    continue
+                if not (
+                    parse_quantity(container_min_max_ranges.max.get("memory", "999E"))
+                    > recommended_ram_requests
+                    > parse_quantity(container_min_max_ranges.min.get("memory", "0"))
+                ):
+                    print(
+                        f"Skipping container because {recommended_ram_requests=} conflicts with {container_min_max_ranges=}"
+                    )
+                    continue
+
                 container_patch = get_container_patch(
                     container=container,
                     recommended_cpu_requests=recommended_cpu_requests,
@@ -123,14 +150,14 @@ class Command(BaseCommand):
     @staticmethod
     @inject
     async def _get_nops_configs(
-            rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client],
+        rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client],
     ) -> dict[str, Any]:
         return await rightsizing_client.get_configs()
 
     @staticmethod
     @inject
     async def _get_container_recommendations(
-            namespace: str, rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client]
+        namespace: str, rightsizing_client: RightsizingClient = Provide[Container.rightsizing_client]
     ) -> dict[str, Any]:
         return await rightsizing_client.get_namespace_recommendations(namespace=namespace)
 
