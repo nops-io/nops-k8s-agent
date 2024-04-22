@@ -7,7 +7,7 @@ from kubernetes_asyncio.client import V1LimitRangeItem
 from nops_k8s_agent.management.commands.rightsize import Command
 from nops_k8s_agent.rightsizing import Container
 
-from nops_k8s_agent.rightsizing.services import KubernetesClientService
+from nops_k8s_agent.rightsizing.dependency_ingection.services import KubernetesClientService
 
 
 @pytest_asyncio.fixture(scope="module", autouse=True)

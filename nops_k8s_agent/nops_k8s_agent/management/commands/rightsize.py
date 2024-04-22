@@ -1,20 +1,18 @@
 import asyncio
-from decimal import Decimal
 from typing import Any
 
 from django.core.management.base import BaseCommand
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
-from kubernetes.utils.quantity import parse_quantity
 from kubernetes_asyncio.client import V1Deployment, V1LimitRangeItem
 from kubernetes_asyncio.client import V1Pod
 
-from nops_k8s_agent.rightsizing.containers import Container
+from nops_k8s_agent.rightsizing.dependency_ingection.containers import Container
+from nops_k8s_agent.rightsizing.dependency_ingection.services import KubernetesClient
+from nops_k8s_agent.rightsizing.dependency_ingection.services import RightsizingClient
 from nops_k8s_agent.rightsizing.models import PodPatch
-from nops_k8s_agent.rightsizing.services import KubernetesClient
-from nops_k8s_agent.rightsizing.services import RightsizingClient
-from nops_k8s_agent.rightsizing.utils import get_container_patch
+from nops_k8s_agent.rightsizing.pods import find_deployment_pods_to_patch
 
 
 @inject
@@ -76,66 +74,26 @@ class Command(BaseCommand):
     async def _find_deployment_pods_to_patch(
         self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
     ) -> list[PodPatch]:
-        pods_to_patch: list[PodPatch] = []
-
-        deployment_policy_requests_change_threshold = self._deployment_policy_requests_change_threshold(deployment)
+        deployment_policy_requests_change_threshold: float = self._deployment_policy_requests_change_threshold(deployment)
         deployment_pods: list[V1Pod] = await kubernetes_client.list_deployment_pods(deployment)
-        namespace_recommendations = await self._get_container_recommendations(namespace=deployment.metadata.namespace)
-        deployment_recommendations = namespace_recommendations.get(deployment.metadata.name, {})
+        namespace_recommendations: dict[str, Any] = await self._get_container_recommendations(namespace=deployment.metadata.namespace)
+        deployment_recommendations: dict[str, Any] = namespace_recommendations.get(deployment.metadata.name, {})
 
         print(f"{deployment_recommendations=}")
 
         if not deployment_recommendations:
-            return pods_to_patch
+            return []
 
         container_min_max_ranges: V1LimitRangeItem = await kubernetes_client.container_min_max_ranges(
             namespace_name=deployment.metadata.namespace
         )
 
-        for pod in deployment_pods:
-            pod_patch = PodPatch(pod_name=pod.metadata.name, pod_namespace=pod.metadata.namespace, containers=[])
-
-            for container in pod.spec.containers:
-                container_requests_recommendations = deployment_recommendations.get(container.name, {}).get(
-                    "requests", {}
-                )
-                if not container_requests_recommendations:
-                    continue
-
-                recommended_cpu_requests = Decimal(container_requests_recommendations.get("cpu", 0))
-                recommended_ram_requests = Decimal(container_requests_recommendations.get("memory", 0))
-
-                if not (
-                    parse_quantity(container_min_max_ranges.max.get("cpu", "999E"))
-                    > recommended_cpu_requests
-                    > parse_quantity(container_min_max_ranges.min.get("cpu", "0"))
-                ):
-                    print(
-                        f"Skipping container because {recommended_cpu_requests=} conflicts with {container_min_max_ranges=}"
-                    )
-                    continue
-                if not (
-                    parse_quantity(container_min_max_ranges.max.get("memory", "999E"))
-                    > recommended_ram_requests
-                    > parse_quantity(container_min_max_ranges.min.get("memory", "0"))
-                ):
-                    print(
-                        f"Skipping container because {recommended_ram_requests=} conflicts with {container_min_max_ranges=}"
-                    )
-                    continue
-
-                container_patch = get_container_patch(
-                    container=container,
-                    recommended_cpu_requests=recommended_cpu_requests,
-                    recommended_ram_requests=recommended_ram_requests,
-                    deployment_policy_requests_change_threshold=deployment_policy_requests_change_threshold,
-                )
-                if container_patch:
-                    pod_patch.containers.append(container_patch)
-
-            if pod_patch.containers:
-                pods_to_patch.append(pod_patch)
-        return pods_to_patch
+        return await find_deployment_pods_to_patch(
+            deployment_pods,
+            deployment_recommendations,
+            container_min_max_ranges,
+            deployment_policy_requests_change_threshold,
+        )
 
     @staticmethod
     @inject
