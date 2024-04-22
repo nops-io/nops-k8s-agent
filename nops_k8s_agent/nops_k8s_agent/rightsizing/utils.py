@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-
 _EXPONENTS = {
     "n": -3,
     "u": -2,

@@ -1,12 +1,13 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
+from kubernetes_asyncio.client import V1LimitRangeItem
 
 import nops_k8s_agent.management.commands.rightsize
-from kubernetes_asyncio.client import V1LimitRangeItem
 from nops_k8s_agent.management.commands.rightsize import Command
 from nops_k8s_agent.rightsizing import Container
-
 from nops_k8s_agent.rightsizing.dependency_ingection.services import KubernetesClientService
 
 

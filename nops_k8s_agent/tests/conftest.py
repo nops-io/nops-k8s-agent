@@ -1,7 +1,9 @@
+from unittest.mock import AsyncMock
+from unittest.mock import Mock
+
+import kubernetes_asyncio.client
 import pytest
 import pytest_asyncio
-from unittest.mock import Mock, AsyncMock
-import kubernetes_asyncio.client
 from kubernetes_asyncio.config import load_incluster_config
 
 EXAMPLE_RESPONSE = [
@@ -258,7 +260,7 @@ def patch_skip_incluster_config_creation():
 def patch_k8s_core_api():
     async def list_namespaced_pod_side_effect(namespace: str, label_selector: str):
         items = []
-        if namespace == "opencost" and label_selector=="app.kubernetes.io/instance=opencost":
+        if namespace == "opencost" and label_selector == "app.kubernetes.io/instance=opencost":
             # Setup the return values of the mock methods and attributes
             mock_metadata = Mock()
             mock_metadata.configure_mock(name="opencost-1234", namespace="opencost")
@@ -347,7 +349,11 @@ def patch_k8s_list_namespaced_deployment():
 def patch_k8s_feature_gates():
     async def call_api_side_effect(path, method, auth_settings=None, response_type=None, _preload_content=None):
         if path == "/metrics" and method == "GET":
-            return [AsyncMock(data="kubernetes_feature_enabled{name=\"InPlacePodVerticalScaling\",stage=\"\"} 1".encode('utf-8'))]
+            return [
+                AsyncMock(
+                    data='kubernetes_feature_enabled{name="InPlacePodVerticalScaling",stage=""} 1'.encode("utf-8")
+                )
+            ]
 
     original_api_client = kubernetes_asyncio.client.ApiClient
     mock_api = Mock()
@@ -361,4 +367,3 @@ def patch_k8s_feature_gates():
     yield mock_api
 
     kubernetes_asyncio.client.ApiClient = original_api_client
-

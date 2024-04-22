@@ -3,8 +3,8 @@
 import os
 import sys
 
-from nops_k8s_agent.rightsizing import Container
 import nops_k8s_agent.management.commands.rightsize
+from nops_k8s_agent.rightsizing import Container
 
 
 def main():

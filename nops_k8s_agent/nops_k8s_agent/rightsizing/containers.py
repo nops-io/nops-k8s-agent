@@ -3,9 +3,9 @@ from decimal import Decimal
 from kubernetes.utils.quantity import parse_quantity
 from kubernetes_asyncio.client import V1Container
 
-from nops_k8s_agent.rightsizing.utils import percentages_difference_threshold_met
-from nops_k8s_agent.rightsizing.utils import format_quantity
 from nops_k8s_agent.rightsizing.models import ContainerPatch
+from nops_k8s_agent.rightsizing.utils import format_quantity
+from nops_k8s_agent.rightsizing.utils import percentages_difference_threshold_met
 
 
 def get_container_patch(

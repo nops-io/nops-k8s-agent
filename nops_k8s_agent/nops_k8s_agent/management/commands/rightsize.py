@@ -5,7 +5,8 @@ from django.core.management.base import BaseCommand
 
 from dependency_injector.wiring import Provide
 from dependency_injector.wiring import inject
-from kubernetes_asyncio.client import V1Deployment, V1LimitRangeItem
+from kubernetes_asyncio.client import V1Deployment
+from kubernetes_asyncio.client import V1LimitRangeItem
 from kubernetes_asyncio.client import V1Pod
 
 from nops_k8s_agent.rightsizing.dependency_ingection.containers import Container
@@ -74,9 +75,13 @@ class Command(BaseCommand):
     async def _find_deployment_pods_to_patch(
         self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
     ) -> list[PodPatch]:
-        deployment_policy_requests_change_threshold: float = self._deployment_policy_requests_change_threshold(deployment)
+        deployment_policy_requests_change_threshold: float = self._deployment_policy_requests_change_threshold(
+            deployment
+        )
         deployment_pods: list[V1Pod] = await kubernetes_client.list_deployment_pods(deployment)
-        namespace_recommendations: dict[str, Any] = await self._get_container_recommendations(namespace=deployment.metadata.namespace)
+        namespace_recommendations: dict[str, Any] = await self._get_container_recommendations(
+            namespace=deployment.metadata.namespace
+        )
         deployment_recommendations: dict[str, Any] = namespace_recommendations.get(deployment.metadata.name, {})
 
         print(f"{deployment_recommendations=}")

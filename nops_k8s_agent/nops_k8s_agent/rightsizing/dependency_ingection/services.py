@@ -4,18 +4,20 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Any
 
+from async_lru import alru_cache
 from kubernetes.utils.quantity import parse_quantity
 from kubernetes_asyncio import client
 from kubernetes_asyncio import config
-from kubernetes_asyncio.client import VersionInfo, V1LimitRangeList, V1LimitRangeItem
 from kubernetes_asyncio.client import V1Deployment
 from kubernetes_asyncio.client import V1DeploymentList
+from kubernetes_asyncio.client import V1LimitRangeItem
+from kubernetes_asyncio.client import V1LimitRangeList
 from kubernetes_asyncio.client import V1NamespaceList
 from kubernetes_asyncio.client import V1Pod
+from kubernetes_asyncio.client import VersionInfo
 from kubernetes_asyncio.client.api_client import ApiClient
 
 from nops_k8s_agent.rightsizing.models import PodPatch
-from async_lru import alru_cache
 
 
 class RightsizingClient(ABC):
@@ -140,7 +142,7 @@ class KubernetesClientService(KubernetesClient):
                 api_response = await api_client.call_api(
                     "/metrics", "GET", auth_settings=["BearerToken"], response_type="str", _preload_content=False
                 )
-                metrics = api_response[0].data.decode('utf-8').split("\n")
+                metrics = api_response[0].data.decode("utf-8").split("\n")
 
             feature_gates = [metric for metric in metrics if metric.startswith("kubernetes_feature_enabled")]
             for feature_gate in feature_gates:
