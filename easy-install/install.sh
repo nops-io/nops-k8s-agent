@@ -5,11 +5,11 @@ set -e
 
 # Use the access key id and secret access key with writing permission to the setup bucket
 ####################  REPLACE THESE VALUES ############################
-AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>"
-AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>"
-APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>"
-APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint>"
-NOPS_K8S_AGENT_PROM_TOKEN="" # Add authentication token for prometheus if necessary
+AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # This is your cloudformation stack created on setup step
+AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>" # This is your cloudformation stack created on setup step
+APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
+APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint>" # example: http://prometheus-server.prometheus-system.svc.cluster.local
+NOPS_K8S_AGENT_PROM_TOKEN="" # Add authentication token for prometheus IF necessary
 #######################################################################
 
 
@@ -118,6 +118,4 @@ nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/n
 --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
 
 
-
 echo "All operations completed successfully."
-echo "Proceed to nOps Dashboard and finish the integration."
