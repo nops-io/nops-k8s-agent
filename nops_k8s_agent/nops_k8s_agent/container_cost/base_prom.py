@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 from django.conf import settings
 
@@ -9,7 +9,7 @@ from prometheus_api_client import PrometheusConnect
 
 class BaseProm:
     def __init__(self, cluster_arn: str) -> None:
-        env_prom_token = os.environ.get("NOPS_K8S_AGENT_PROM_TOKEN", None)
+        env_prom_token = settings.NOPS_K8S_AGENT_PROM_TOKEN
         env_prom_endpoint = os.environ.get("APP_PROMETHEUS_SERVER_ENDPOINT", None)
 
         if env_prom_token and len(env_prom_token):

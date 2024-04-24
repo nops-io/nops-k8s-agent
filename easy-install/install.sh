@@ -8,7 +8,7 @@ set -e
 AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>"
 AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>"
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>"
-APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint">
+APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint>"
 NOPS_K8S_AGENT_PROM_TOKEN="" # Add authentication token for prometheus if necessary
 #######################################################################
 
@@ -43,11 +43,10 @@ if [[ $AWS_ACCESS_KEY_ID == "<REPLACE-YourAccessKeyId>" || $AWS_SECRET_ACCESS_KE
   exit 1
 fi
 
-if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>" || $APP_AWS_S3_BUCKET == "<REPLACE-YourS3Bucket>" || $APP_AWS_S3_PREFIX == "<REPLACE-YourS3Prefix>" ]]; then
+if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>"  ]]; then
   echo "Agent environment variables must be set before running this script."
   exit 1
 fi
-
 
 # Create namespace for nops-k8s-agent
 nops_k8s_agent_namespace="nops-k8s-agent"
@@ -92,24 +91,33 @@ fi
 
 
 # Applying extra scrape configs to Prometheus
-host=$(echo $url | cut -d'/' -f3)
+host=$(echo $APP_PROMETHEUS_SERVER_ENDPOINT | cut -d'/' -f3)
 PROMETHEUS_SERVICE=$(echo $host | cut -d'.' -f1)
 PROMETHEUS_NAMESPACE=$(echo $host | cut -d'.' -f2)
+PROMETHEUS_DEPLOYMENT=$(echo $host | cut -d'.' -f1 | sed 's/-server//')
 
-helm upgrade --reuse-values $PROMETHEUS_SERVICE --repo https://prometheus-community.github.io/helm-charts prometheus   --namespace $PROMETHEUS_NAMESPACE --set-file extraScrapeConfigs=https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml || { echo "Failed to update Prometheus"; exit 1; }
+helm upgrade --reuse-values $PROMETHEUS_DEPLOYMENT --repo https://prometheus-community.github.io/helm-charts prometheus   --namespace $PROMETHEUS_NAMESPACE -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/extraScrape.yaml || { echo "Failed to update Prometheus"; exit 1; }
 
 # Installing nops-cost
 helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
---namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml || { echo "Failed to install nops-cost"; exit 1; }
+--namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml \
+--set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
+--set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
+--set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
+--set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
+--set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
+  || { echo "Failed to install nops-cost"; exit 1; }
 
 # Installing k8s-agent
 helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
 nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
---set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN,\
---set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT,\
---set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN,\
-env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET,\
-env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
+--set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
+--set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
+--set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
+--set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
+--set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
+
+
 
 echo "All operations completed successfully."
 echo "Proceed to nOps Dashboard and finish the integration."
