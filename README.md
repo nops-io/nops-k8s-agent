@@ -27,11 +27,22 @@ This enables the nOps platform to:
 
 This document guides you through the setup and deployment process, ensuring a smooth integration with the nOps platform for enhanced operational efficiency.
 
-## Easy Install
+## nOps Integration 
 
 
-You can quickly install the agent and all it's requirements and performing all the steps downloading the [easy-install.zip](https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/extras/easy-install.zip).
-It contains all the yaml files for helm configurations as well as the cf-bucket-access-key.yaml CloudFormation template to quickly create a bucket and a user with credentials for the agent.
+1. Go to your Container Cost in Integration Settings on nOps
+2. Click Setup for the account of the cluster - make sure to be logged in to that account in AWS
+  a. Go through the CloudFormation stack creation on AWS
+3. Click on Check Status to confirm the permissions were properly granted
+4. Click on Generate Script
+  a. Replace the following variables in the script:
+    - AWS_ACCESS_KEY_ID # This is provided on the CloudFormation created
+    - AWS_SECRET_ACCESS_KEY # This is provided on the CloudFormation created
+    - APP_NOPS_K8S_AGENT_CLUSTER_ARN # This is provided in EKS dashboard
+    - APP_PROMETHEUS_SERVER_ENDPOINT # example: http://prometheus-server.prometheus-system.svc.cluster.local
+    - NOPS_K8S_AGENT_PROM_TOKEN # Add your Prometheus bearer token, if neccessary
+5. Save and execute this script
+
 
 **Make sure you have helm and kubectl installed and you are pointing to the correct cluster.**
 
