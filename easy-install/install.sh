@@ -8,7 +8,11 @@ set -e
 AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>"
 AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>"
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>"
+APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint">
+NOPS_K8S_AGENT_PROM_TOKEN="" # Add authentication token for prometheus if necessary
 #######################################################################
+
+
 APP_AWS_S3_BUCKET="<REPLACE-YourS3Bucket>"
 APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
 # Check if helm and kubectl are installed
@@ -85,8 +89,14 @@ else
         exit 1
     fi
 fi
-# Installing nops-Prometheus
-helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace   -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml || { echo "Failed to install Prometheus"; exit 1; }
+
+
+# Applying extra scrape configs to Prometheus
+host=$(echo $url | cut -d'/' -f3)
+PROMETHEUS_SERVICE=$(echo $host | cut -d'.' -f1)
+PROMETHEUS_NAMESPACE=$(echo $host | cut -d'.' -f2)
+
+helm upgrade --reuse-values $PROMETHEUS_SERVICE --repo https://prometheus-community.github.io/helm-charts prometheus   --namespace $PROMETHEUS_NAMESPACE --set-file extraScrapeConfigs=https://raw.githubusercontent.com/opencost/opencost/develop/kubernetes/prometheus/extraScrapeConfigs.yaml || { echo "Failed to update Prometheus"; exit 1; }
 
 # Installing nops-cost
 helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
@@ -96,6 +106,8 @@ helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart 
 helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
 nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
 --set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN,\
+--set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT,\
+--set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN,\
 env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET,\
 env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
 
