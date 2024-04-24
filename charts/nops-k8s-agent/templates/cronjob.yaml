@@ -16,7 +16,14 @@ spec:
           serviceAccountName: default
           {{ end }}
           containers:
-          - name: {{ .Chart.Name }}
+          - resources:
+              limits:
+                cpu: 500m
+                memory: 1024Mi
+              requests:
+                cpu: 50m
+                memory: 512Mi
+            name: {{ .Chart.Name }}
             env:
               - name: APP_APP_VERSION
                 value: "{{ .Chart.AppVersion }}"
