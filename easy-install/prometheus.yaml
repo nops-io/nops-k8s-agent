@@ -616,11 +616,11 @@ server:
   ##
   resources:
     limits:
-      cpu: 500m
-      memory: 5Gi
+      cpu: 1000m
+      memory: 30Gi
     requests:
-      cpu: 500m
-      memory: 5Gi
+      cpu: 800m
+      memory: 20Gi
 
   # Required for use in managed kubernetes clusters (such as AWS EKS) with custom CNI (such as calico),
   # because control-plane managed by AWS cannot communicate with pods' IP CIDR and admission webhooks are not working
@@ -717,7 +717,7 @@ server:
 
   ## Prometheus data retention period (default if not specified is 15 days)
   ##
-  retention: "2d"
+  retention: "1d"
 
   ## Prometheus' data retention size. Supported units: B, KB, MB, GB, TB, PB, EB.
   ##
