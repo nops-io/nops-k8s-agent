@@ -239,7 +239,7 @@ opencost:
       internetNetworkEgress: 0.12
 
   dataRetention:
-    dailyResolutionDays: 2
+    dailyResolutionDays: 3
 
   cloudCost:
     # -- Enable cloud cost ingestion and querying, dependant on valid integration credentials
