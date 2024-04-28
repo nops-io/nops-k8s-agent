@@ -8,12 +8,13 @@ set -e
 AGENT_AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # This is in your cloudformation stack created on setup step
 AGENT_AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>" # This is in your cloudformation stack created on setup step
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
+APP_PROMETHEUS_SERVER_ENDPOINT="<REPLACE-YourPrometheusEndpoint>" # example: http://prometheus-server.prometheus-system.svc.cluster.local
+NOPS_K8S_AGENT_PROM_TOKEN="" # IF NECESSARY - Add authentication token for prometheus
 #######################################################################
 
 
 APP_AWS_S3_BUCKET="<REPLACE-YourS3Bucket>"
 APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
-APP_PROMETHEUS_SERVER_ENDPOINT="http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
 # Check if helm and kubectl are installed
 if ! command -v kubectl &>/dev/null; then
     echo "kubectl is not installed. Please install kubectl and try again."
@@ -89,18 +90,23 @@ else
 fi
 
 
-# Installing nops-Prometheus
-helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml || { echo "Failed to install Prometheus"; exit 1; }
+# Applying extra scrape configs to Prometheus
+host=$(echo $APP_PROMETHEUS_SERVER_ENDPOINT | cut -d'/' -f3)
+PROMETHEUS_SERVICE=$(echo $host | cut -d'.' -f1)
+PROMETHEUS_NAMESPACE=$(echo $host | cut -d'.' -f2)
+PROMETHEUS_DEPLOYMENT=$(echo $host | cut -d'.' -f1 | sed 's/-server//')
 
-# # Installing nops-cost
+helm upgrade --reuse-values $PROMETHEUS_DEPLOYMENT --repo https://prometheus-community.github.io/helm-charts prometheus   --namespace $PROMETHEUS_NAMESPACE -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/extraScrape.yaml || { echo "Failed to update Prometheus"; exit 1; }
+
+# Installing nops-cost
 helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
---namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
+--namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml \
 --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
 --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
 --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
 --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
 --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
---set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT  || { echo "Failed to install nops-cost"; exit 1; }
+--set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT || { echo "Failed to install nops-cost"; exit 1; }
 
 # Installing k8s-agent
 helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \

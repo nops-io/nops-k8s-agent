@@ -5,8 +5,8 @@ set -e
 
 # Use the access key id and secret access key with writing permission to the setup bucket
 ####################  REPLACE THESE VALUES ############################
-AGENT_AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # This is in your cloudformation stack created on setup step
-AGENT_AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>" # This is in your cloudformation stack created on setup step
+AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # This is in your cloudformation stack created on setup step
+AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>" # This is in your cloudformation stack created on setup step
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
 #######################################################################
 
@@ -36,8 +36,8 @@ if [ "$current_context" != "$APP_NOPS_K8S_AGENT_CLUSTER_ARN" ]; then
     echo "Switched context to $APP_NOPS_K8S_AGENT_CLUSTER_ARN successfully."
 fi
 
-# Ensure AGENT_AWS_ACCESS_KEY_ID and AGENT_AWS_SECRET_ACCESS_KEY are replaced
-if [[ $AGENT_AWS_ACCESS_KEY_ID == "<REPLACE-YourAccessKeyId>" || $AGENT_AWS_SECRET_ACCESS_KEY == "<REPLACE-YourSecretAccessKey>" ]]; then
+# Ensure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are replaced
+if [[ $AWS_ACCESS_KEY_ID == "<REPLACE-YourAccessKeyId>" || $AWS_SECRET_ACCESS_KEY == "<REPLACE-YourSecretAccessKey>" ]]; then
   echo "AWS credentials must be set before running this script."
   exit 1
 fi
@@ -71,15 +71,15 @@ if kubectl get secret $nops_k8s_agent_secret --namespace $nops_k8s_agent_namespa
     echo "Secret 'nops-k8s-agent' already exists in namespace '${nops_k8s_agent_namespace}'. Updating it..."
     # Command to update the existing secret
     kubectl create secret generic $nops_k8s_agent_secret \
-    --from-literal=aws_access_key_id=$AGENT_AWS_ACCESS_KEY_ID \
-    --from-literal=aws_secret_access_key=$AGENT_AWS_SECRET_ACCESS_KEY \
+    --from-literal=aws_access_key_id=$AWS_ACCESS_KEY_ID \
+    --from-literal=aws_secret_access_key=$AWS_SECRET_ACCESS_KEY \
     --namespace=${nops_k8s_agent_namespace} --dry-run=client -o yaml | kubectl apply -f -
 else
     echo "Secret 'nops-k8s-agent' does not exist in namespace '${nops_k8s_agent_namespace}'. Creating it..."
     # Command to create the secret
     if kubectl create secret generic $nops_k8s_agent_secret \
-    --from-literal=aws_access_key_id=$AGENT_AWS_ACCESS_KEY_ID \
-    --from-literal=aws_secret_access_key=$AGENT_AWS_SECRET_ACCESS_KEY \
+    --from-literal=aws_access_key_id=$AWS_ACCESS_KEY_ID \
+    --from-literal=aws_secret_access_key=$AWS_SECRET_ACCESS_KEY \
     --namespace=${nops_k8s_agent_namespace} --save-config; then
         echo "Secret 'nops-k8s-agent' created successfully."
     else
