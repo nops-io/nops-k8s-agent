@@ -129,3 +129,7 @@ class Command(BaseCommand):
                 self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
 
         self.upload_job_log(s3, s3_bucket, s3_prefix, cluster_arn, now)
+        try:
+            os.remove(self.log_path)
+        except Exception as e:
+            print(f"Error when removing {self.log_path} {str(e)}")

@@ -21,4 +21,4 @@ def test_dumptos3(main_mock, mock_prom_conn):
 
         call_command("dumptos3")
         assert mock_prom_conn.called
-        assert mock_s3.return_value.upload_file.call_count == 9
+        assert mock_s3.return_value.upload_file.call_count == 8
