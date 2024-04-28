@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   nops-k8s-agent:
   - apiVersion: v2
+    appVersion: 4.0.7
+    created: "2024-04-28T14:52:10.440116501Z"
+    description: A Helm chart for Kubernetes
+    digest: ed68e070c37a38c87d2c9d8f2dc2f85b735c7842f76b9eb2c6978d7d53e92b4d
+    name: nops-k8s-agent
+    type: application
+    urls:
+    - https://github.com/nops-io/nops-k8s-agent/releases/download/nops-k8s-agent-0.4.7/nops-k8s-agent-0.4.7.tgz
+    version: 0.4.7
+  - apiVersion: v2
     appVersion: 4.0.6
     created: "2024-04-24T14:36:18.104863201Z"
     description: A Helm chart for Kubernetes
@@ -131,4 +141,4 @@ entries:
     urls:
     - https://github.com/nops-io/nops-k8s-agent/releases/download/nops-k8s-agent-0.1.4/nops-k8s-agent-0.1.4.tgz
     version: 0.1.4
-generated: "2024-04-24T14:36:18.104945045Z"
+generated: "2024-04-28T14:52:10.440295177Z"
