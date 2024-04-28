@@ -60,12 +60,15 @@ class Command(BaseCommand):
         s3.upload_file(Filename=self.log_path, Bucket=s3_bucket, Key=s3_key)
 
     def export_nopscost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
-        cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        processed_data = main_command()
-        path = f"s3://{s3_bucket}/{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
-        if processed_data is not None and not processed_data.empty:
-            print(f"\nSaving nops-cost data to {path}")
-            processed_data.to_parquet(path)
+        try:
+            cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
+            processed_data = main_command()
+            path = f"s3://{s3_bucket}/{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
+            if processed_data is not None and not processed_data.empty:
+                print(f"\nSaving nops-cost data to {path}")
+                processed_data.to_parquet(path)
+        except Exception as e:
+            print("\nError while exporting nopscost data: {}".format(str(e)))
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
         tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
