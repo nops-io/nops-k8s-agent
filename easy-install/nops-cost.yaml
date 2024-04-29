@@ -136,12 +136,12 @@ opencost:
     resources:
       # -- CPU/Memory resource requests
       requests:
-        cpu: '100m'
-        memory: '256Mi'
+        cpu: '999m'
+        memory: '2Gi'
       # -- CPU/Memory resource limits
       limits:
         cpu: '999m'
-        memory: '1Gi'
+        memory: '4Gi'
     # Startup probe configuration
     startupProbe:
       # -- Whether probe is enabled
