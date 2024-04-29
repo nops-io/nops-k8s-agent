@@ -717,7 +717,7 @@ server:
 
   ## Prometheus data retention period (default if not specified is 15 days)
   ##
-  retention: "2d"
+  retention: "3d"
 
   ## Prometheus' data retention size. Supported units: B, KB, MB, GB, TB, PB, EB.
   ##
