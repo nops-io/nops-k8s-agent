@@ -47,6 +47,8 @@ class DualOutput:
 class Command(BaseCommand):
     log_path = "/tmp/logfile.log"
 
+    errors = []
+
     def add_arguments(self, parser):
         # Optional command-line arguments for start and end date
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
@@ -69,6 +71,7 @@ class Command(BaseCommand):
                 processed_data.to_parquet(path)
         except Exception as e:
             print("\nError while exporting nopscost data: {}".format(str(e)))
+            self.errors.append(e)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
         tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
@@ -136,3 +139,7 @@ class Command(BaseCommand):
             os.remove(self.log_path)
         except Exception as e:
             print(f"Error when removing {self.log_path} {str(e)}")
+
+        if self.errors:
+            print("\nFailed to finish all exports: ", str(self.errors))
+            sys.exit(1)
