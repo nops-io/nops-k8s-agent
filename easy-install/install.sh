@@ -14,6 +14,11 @@ APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this o
 APP_AWS_S3_BUCKET="<REPLACE-YourS3Bucket>"
 APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
 APP_PROMETHEUS_SERVER_ENDPOINT="http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
+
+PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus-ksm.yaml"
+
+# PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml" # this is with ksm disabled
+
 # Check if helm and kubectl are installed
 if ! command -v kubectl &>/dev/null; then
     echo "kubectl is not installed. Please install kubectl and try again."
@@ -90,7 +95,7 @@ fi
 
 
 # Installing nops-Prometheus
-helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml || { echo "Failed to install Prometheus"; exit 1; }
+helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Failed to install Prometheus"; exit 1; }
 
 # # Installing nops-cost
 helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
