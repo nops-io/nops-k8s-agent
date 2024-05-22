@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}-high
+  name: {{ template "nops-k8s-agent.fullname" . }}-container-metrics-high
 spec:
-  schedule: "2 * * * *"
+  schedule: "35 * * * *"
   jobTemplate:
     spec:
       backoffLimit: 1
