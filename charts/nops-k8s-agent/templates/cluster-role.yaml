@@ -52,6 +52,9 @@ rules:
     verbs:
       - list
       - watch
+      {{ if .Values.env_variables.APP_NOPS_ENABLE_POD_RIGHTSIZING }}
+      - patch
+      {{ end }}
   - apiGroups:
       - batch
     resources:
