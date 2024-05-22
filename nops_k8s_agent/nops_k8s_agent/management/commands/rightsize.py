@@ -12,8 +12,12 @@ from kubernetes_asyncio.client import V1Pod
 from nops_k8s_agent.rightsizing.dependency_ingection.containers import Container
 from nops_k8s_agent.rightsizing.dependency_ingection.services import KubernetesClient
 from nops_k8s_agent.rightsizing.dependency_ingection.services import RightsizingClient
-from nops_k8s_agent.rightsizing.models import PodPatch
+from nops_k8s_agent.rightsizing.deployments import find_deployment_patch
+from nops_k8s_agent.rightsizing.models import PodPatch, DeploymentPatch
 from nops_k8s_agent.rightsizing.pods import find_deployment_pods_to_patch
+
+
+processes_semaphore = asyncio.Semaphore(10)
 
 
 @inject
@@ -47,14 +51,19 @@ class Command(BaseCommand):
     async def process_deployment(
         self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
     ):
-        # Live-patch pods if this feature is enabled
-        if await kubernetes_client.in_place_pod_vertical_scaling_enabled():
-            pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
+        async with processes_semaphore:
+            # Live-patch pods if this feature is enabled
+            if await kubernetes_client.in_place_pod_vertical_scaling_enabled():
+                pods_patches: list[PodPatch] = await self._find_deployment_pods_to_patch(deployment)
 
-            tasks = []
-            for pod_patch in pods_patches:
-                tasks.append(self._patch_pod(pod_patch))
-            await asyncio.gather(*tasks)
+                tasks = []
+                for pod_patch in pods_patches:
+                    tasks.append(self._patch_pod(pod_patch))
+                await asyncio.gather(*tasks)
+
+            deployment_patch: DeploymentPatch | None = await self._find_deployment_patch(deployment)
+            if deployment_patch:
+                await self._patch_deployment(deployment_patch)
 
     @inject
     async def _list_deployments(
@@ -75,23 +84,15 @@ class Command(BaseCommand):
     async def _find_deployment_pods_to_patch(
         self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
     ) -> list[PodPatch]:
-        deployment_policy_requests_change_threshold: float = self._deployment_policy_requests_change_threshold(
-            deployment
-        )
-        deployment_pods: list[V1Pod] = await kubernetes_client.list_deployment_pods(deployment)
-        namespace_recommendations: dict[str, Any] = await self._get_container_recommendations(
-            namespace=deployment.metadata.namespace
-        )
+        namespace = deployment.metadata.namespace
+        deployment_policy_requests_change_threshold = self._deployment_policy_requests_change_threshold(deployment)
+        namespace_recommendations = await self._get_container_recommendations(namespace=namespace)
         deployment_recommendations: dict[str, Any] = namespace_recommendations.get(deployment.metadata.name, {})
-
-        print(f"{deployment_recommendations=}")
+        container_min_max_ranges = await kubernetes_client.container_min_max_ranges(namespace_name=namespace)
+        deployment_pods: list[V1Pod] = await kubernetes_client.list_deployment_pods(deployment)
 
         if not deployment_recommendations:
             return []
-
-        container_min_max_ranges: V1LimitRangeItem = await kubernetes_client.container_min_max_ranges(
-            namespace_name=deployment.metadata.namespace
-        )
 
         return await find_deployment_pods_to_patch(
             deployment_pods,
@@ -100,15 +101,42 @@ class Command(BaseCommand):
             deployment_policy_requests_change_threshold,
         )
 
+    @inject
+    async def _find_deployment_patch(
+        self, deployment: V1Deployment, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ) -> DeploymentPatch | None:
+        namespace = deployment.metadata.namespace
+        deployment_policy_requests_change_threshold = self._deployment_policy_requests_change_threshold(deployment)
+        namespace_recommendations = await self._get_container_recommendations(namespace=namespace)
+        deployment_recommendations: dict[str, Any] = namespace_recommendations.get(deployment.metadata.name, {})
+        container_min_max_ranges = await kubernetes_client.container_min_max_ranges(namespace_name=namespace)
+
+        return await find_deployment_patch(
+            deployment,
+            deployment_recommendations,
+            container_min_max_ranges,
+            deployment_policy_requests_change_threshold,
+        )
+
     @staticmethod
     @inject
     async def _patch_pod(
-        pod_patch: PodPatch, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+            pod_patch: PodPatch, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
     ):
         try:
             await kubernetes_client.patch_pod(pod_patch)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"_patch_pod Error: {e}")
+
+    @staticmethod
+    @inject
+    async def _patch_deployment(
+            deployment_patch: DeploymentPatch, kubernetes_client: KubernetesClient = Provide[Container.kubernetes_client]
+    ):
+        try:
+            await kubernetes_client.patch_deployment(deployment_patch)
+        except Exception as e:
+            print(f"_patch_deployment Error: {e}")
 
     @staticmethod
     @inject

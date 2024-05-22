@@ -27,3 +27,24 @@ class PodPatch:
                 }
             },
         }
+
+
+@dataclass
+class DeploymentPatch:
+    deployment_name: str
+    deployment_namespace: str
+    containers: list[ContainerPatch]
+
+    def to_patch_kwargs(self) -> dict[str, Any]:
+        return {
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {"name": container.container_name, "resources": {"requests": container.requests}}
+                            for container in self.containers
+                        ]
+                    }
+                }
+            }
+        }

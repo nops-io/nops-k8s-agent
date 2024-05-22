@@ -17,7 +17,7 @@ from kubernetes_asyncio.client import V1Pod
 from kubernetes_asyncio.client import VersionInfo
 from kubernetes_asyncio.client.api_client import ApiClient
 
-from nops_k8s_agent.rightsizing.models import PodPatch
+from nops_k8s_agent.rightsizing.models import PodPatch, DeploymentPatch
 
 
 class RightsizingClient(ABC):
@@ -73,11 +73,16 @@ class KubernetesClient(ABC):
     async def patch_pod(self, pod_patch: PodPatch) -> None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def patch_deployment(self, deployment_patch: DeploymentPatch) -> None:
+        raise NotImplementedError
+
 
 class RightsizingClientService(RightsizingClient):
     async def get_configs(self) -> dict[str, Any]:
         raise NotImplementedError
 
+    @alru_cache(ttl=100)
     async def get_namespace_recommendations(self, namespace: str) -> dict[str, Any]:
         raise NotImplementedError
 
@@ -138,12 +143,13 @@ class KubernetesClientService(KubernetesClient):
         feature_statuses = {}
         try:
             async with ApiClient() as api:
-                api_client = client.ApiClient(api)
-                api_response = await api_client.call_api(
-                    "/metrics", "GET", auth_settings=["BearerToken"], response_type="str", _preload_content=False
+                api_response = await api.call_api(
+                    "/metrics",
+                    "GET", auth_settings=["BearerToken"], _preload_content=False
                 )
-                metrics = api_response[0].data.decode("utf-8").split("\n")
+                response_content = await api_response.read()
 
+            metrics = response_content.decode('utf-8').split("\n")
             feature_gates = [metric for metric in metrics if metric.startswith("kubernetes_feature_enabled")]
             for feature_gate in feature_gates:
                 match = re.search(r"name=\"([^\"]*)\"", feature_gate)
@@ -213,6 +219,18 @@ class KubernetesClientService(KubernetesClient):
             print(f"Patching pod {pod_patch.pod_name} setting containers {pod_patch_kwargs=}")
             await v1.patch_namespaced_pod(
                 **pod_patch_kwargs,
+                _content_type="application/json-patch+json",  # (optional, default if patch is a list)
+            )
+
+    async def patch_deployment(self, deployment_patch: DeploymentPatch) -> None:
+        async with ApiClient() as api:
+            apps_v1 = client.AppsV1Api(api)
+            deployment_patch_kwargs = deployment_patch.to_patch_kwargs()
+            print(f"Patching deployment {deployment_patch.deployment_name} setting body {deployment_patch_kwargs=}")
+            await apps_v1.patch_namespaced_deployment(
+                name=deployment_patch.deployment_name,
+                namespace=deployment_patch.deployment_namespace,
+                body=deployment_patch_kwargs,
                 _content_type="application/json-patch+json",  # (optional, default if patch is a list)
             )
 
