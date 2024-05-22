@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 import boto3
 
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
+from nops_k8s_agent.container_cost.container_metrics import ContainerMetrics
 from nops_k8s_agent.container_cost.deployment_metrics import DeploymentMetrics
 from nops_k8s_agent.container_cost.job_metrics import JobMetrics
 from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
@@ -78,6 +79,7 @@ class Command(BaseCommand):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = [
             BaseLabels,
+            ContainerMetrics,
             DeploymentMetrics,
             JobMetrics,
             NodeMetrics,
