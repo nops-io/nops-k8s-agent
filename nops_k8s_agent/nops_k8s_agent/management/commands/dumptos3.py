@@ -52,6 +52,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         # Optional command-line arguments for start and end date
+        parser.add_argument("--module-to-collect", type=str, help="Name of the metric module to collect")
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
 
@@ -74,50 +75,55 @@ class Command(BaseCommand):
             print("\nError while exporting nopscost data: {}".format(str(e)))
             self.errors.append(e)
 
-    def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
+    def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, klass_name):
         tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        collect_klass = [
-            BaseLabels,
-            ContainerMetrics,
-            DeploymentMetrics,
-            JobMetrics,
-            NodeMetrics,
-            PersistentvolumeMetrics,
-            PersistentvolumeclaimMetrics,
-            PodMetrics,
-            NodeMetadata,
-        ]
-        for klass in collect_klass:
-            try:
-                instance = klass(cluster_arn=cluster_arn)
-                FILE_PREFIX = klass.FILE_PREFIX
-                path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
-                tmp_file = f"{tmp_path}{klass.FILENAME}"
-                instance.convert_to_table_and_save(
-                    period="last_hour", current_time=start_time, step="5m", filename=tmp_file
-                )
-                s3_key = f"{path}/{klass.FILENAME}"
-                s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
-                print(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
-            except Exception as e:
-                import traceback
+        collect_klass = {
+            "base_labels": BaseLabels,
+            "deployment_metrics": DeploymentMetrics,
+            "job_metrics": JobMetrics,
+            "node_metrics": NodeMetrics,
+            "pv_metrics": PersistentvolumeMetrics,
+            "pvc_metrics": PersistentvolumeclaimMetrics,
+            "pod_metrics": PodMetrics,
+            "node_metadata": NodeMetadata,
+            "container_metrics": ContainerMetrics
+        }
 
-                traceback_info = traceback.format_exc()
-                print(traceback_info)
-                print(f"Error when processing {type(klass)} {str(e)}")
-            finally:
-                # Trying to remove the tmp file
-                try:
-                    os.remove(tmp_file)
-                except Exception as e:
-                    print(f"Error when removing {tmp_file} {str(e)}")
+        try:
+            klass = collect_klass[klass_name]
+            instance = klass(cluster_arn=cluster_arn)
+            FILE_PREFIX = klass.FILE_PREFIX
+            path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
+            tmp_file = f"{tmp_path}{klass.FILENAME}"
+            instance.convert_to_table_and_save(
+                period="last_hour", current_time=start_time, step="5m", filename=tmp_file
+            )
+            s3_key = f"{path}/{klass.FILENAME}"
+            s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
+            print(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
+        except KeyError as e:
+            print(f"\nWrong metric module name: {klass_name}")
+            return
+        except Exception as e:
+            import traceback
+
+            traceback_info = traceback.format_exc()
+            print(traceback_info)
+            print(f"Error when processing {type(klass)} {str(e)}")
+        finally:
+            # Trying to remove the tmp file
+            try:
+                os.remove(tmp_file)
+            except Exception as e:
+                print(f"Error when removing {tmp_file} {str(e)}")
 
     def handle(self, *args, **options):
         s3 = boto3.client("s3")
         s3_bucket = settings.AWS_S3_BUCKET
         s3_prefix = settings.AWS_S3_PREFIX
         cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
+        module_to_collect = options["module_to_collect"]
         start_date_str = options["start_date"]
         end_date_str = options["end_date"]
 
@@ -133,8 +139,10 @@ class Command(BaseCommand):
         else:
             now = dt.datetime.now()
             with DualOutput(self.log_path):
-                self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
-                self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
+                if module_to_collect == "nopscost":
+                    self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+                else:
+                    self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, module_to_collect)
 
         self.upload_job_log(s3, s3_bucket, s3_prefix, cluster_arn, now)
         try:
