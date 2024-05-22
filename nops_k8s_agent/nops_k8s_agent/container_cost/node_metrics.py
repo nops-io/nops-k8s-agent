@@ -21,6 +21,12 @@ class NodeMetrics(BaseMetrics):
             "node",
             "unit",
         ],
+        "node_cpu_utilization": [
+            "node",
+        ],
+        "node_memory_utilization": [
+            "node",
+        ],
     }
     FILE_PREFIX = "node_metrics"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metrics_0.parquet"
