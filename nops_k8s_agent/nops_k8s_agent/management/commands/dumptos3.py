@@ -56,20 +56,46 @@ class Command(BaseCommand):
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
 
-    def upload_job_log(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
+    def upload_job_log(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, module_to_collect):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        path = f"{s3_prefix}container_cost/agent_job_logs/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
+        if not module_to_collect:
+            module_to_collect = "ALL"
+        path = f"{s3_prefix}container_cost/agent_job_logs/{module_to_collect}/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
 
         s3_key = f"{path}/agent_job.log"
         s3.upload_file(Filename=self.log_path, Bucket=s3_bucket, Key=s3_key)
 
+    def _get_s3_key(self, s3_prefix, start_time, cluster_arn):
+        cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
+        s3_key = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
+        return s3_key
+
+    def _is_nops_cost_exported(self, s3_bucket, s3_prefix, start_time, cluster_arn):
+        s3 = boto3.client("s3")
+        s3_key = self._get_s3_key(s3_prefix, start_time, cluster_arn)
+
+        try:
+            response = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key)
+            for obj in response.get("Contents", []):
+                if obj["Key"] == s3_key:
+                    return True
+            return False
+        except Exception as e:
+            print("\nError while checking if nops-cost data is exported: {}".format(str(e)))
+            self.errors.append(e)
+            return False
+
     def export_nopscost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         try:
-            cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
+            if self._is_nops_cost_exported(s3_bucket, s3_prefix, start_time, cluster_arn):
+                return
+        except Exception as e:
+            print(f"\nFailed to check previously exported nops-cost data: {e}")
+            self.errors.append(e)
+        try:
             processed_data = main_command()
-            path = f"s3://{s3_bucket}/{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
+            path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, start_time, cluster_arn)}"
             if processed_data is not None and not processed_data.empty:
-                print(f"\nSaving nops-cost data to {path}")
                 processed_data.to_parquet(path)
         except Exception as e:
             print("\nError while exporting nopscost data: {}".format(str(e)))
@@ -80,6 +106,7 @@ class Command(BaseCommand):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = {
             "base_labels": BaseLabels,
+            "container_metrics": ContainerMetrics,
             "deployment_metrics": DeploymentMetrics,
             "job_metrics": JobMetrics,
             "node_metrics": NodeMetrics,
@@ -87,9 +114,7 @@ class Command(BaseCommand):
             "pvc_metrics": PersistentvolumeclaimMetrics,
             "pod_metrics": PodMetrics,
             "node_metadata": NodeMetadata,
-            "container_metrics": ContainerMetrics
         }
-
         try:
             klass = collect_klass[klass_name]
             instance = klass(cluster_arn=cluster_arn)
@@ -118,6 +143,21 @@ class Command(BaseCommand):
             except Exception as e:
                 print(f"Error when removing {tmp_file} {str(e)}")
 
+    def yield_all_klass(self):
+        collect_klass = [
+            "base_labels",
+            "container_metrics",
+            "deployment_metrics",
+            "job_metrics",
+            "node_metrics",
+            "pv_metrics",
+            "pvc_metrics",
+            "pod_metrics",
+            "node_metadata",
+        ]
+        for klass in collect_klass:
+            yield klass
+
     def handle(self, *args, **options):
         s3 = boto3.client("s3")
         s3_bucket = settings.AWS_S3_BUCKET
@@ -126,6 +166,7 @@ class Command(BaseCommand):
         module_to_collect = options["module_to_collect"]
         start_date_str = options["start_date"]
         end_date_str = options["end_date"]
+        now = dt.datetime.now()
 
         if start_date_str and end_date_str:
             start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d")
@@ -134,22 +175,26 @@ class Command(BaseCommand):
                 for hour in range(24):
                     current_time = single_date + dt.timedelta(hours=hour)
                     with DualOutput(self.log_path):
-                        self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, current_time)
+                        for klass_name in self.yield_all_klass():
+                            self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, current_time, klass_name)
 
         else:
-            now = dt.datetime.now()
             with DualOutput(self.log_path):
-                if module_to_collect == "nopscost":
+                if not module_to_collect or module_to_collect == "":
                     self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+                    for klass_name in self.yield_all_klass():
+                        self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, klass_name)
                 else:
-                    self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, module_to_collect)
+                    if module_to_collect == "nopscost":
+                        self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+                    else:
+                        self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, module_to_collect)
 
-        self.upload_job_log(s3, s3_bucket, s3_prefix, cluster_arn, now)
+        self.upload_job_log(s3, s3_bucket, s3_prefix, cluster_arn, now, module_to_collect)
         try:
             os.remove(self.log_path)
         except Exception as e:
             print(f"Error when removing {self.log_path} {str(e)}")
-
         if self.errors:
             print("\nFailed to finish all exports: ", str(self.errors))
             sys.exit(1)
