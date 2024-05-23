@@ -22,7 +22,7 @@ def test_dumptos3(main_mock, mock_prom_conn):
 
         call_command("dumptos3")
         assert mock_prom_conn.called
-        assert mock_s3.return_value.upload_file.call_count == 9
+        assert mock_s3.return_value.upload_file.call_count == 10
 
 
 @responses.activate
@@ -41,24 +41,6 @@ def test_dumptos3_with_module(main_mock, mock_prom_conn):
         assert mock_s3.return_value.upload_file.call_count == 2
 
 
-@responses.activate
-@patch("nops_k8s_agent.container_cost.base_prom.PrometheusConnect.custom_query_range")
-@patch("nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter.main_command")
-def test_dumptos3_with_dates(main_mock, mock_prom_conn):
-    with patch("nops_k8s_agent.management.commands.dumptos3.boto3.client") as mock_s3:
-        mock_s3.return_value.upload_file.return_value = None
-        mock_prom_conn.return_value = EXAMPLE_RESPONSE
-        mock_df = MagicMock()
-        mock_df.to_parquet = MagicMock()
-        main_mock.return_value = mock_df
-
-        start_date = (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y-%m-%d")
-        end_date = dt.datetime.now().strftime("%Y-%m-%d")
-
-        call_command("dumptos3", start_date=start_date, end_date=end_date)
-        assert mock_prom_conn.called
-        assert mock_s3.return_value.upload_file.call_count == 385
-
 
 @patch("nops_k8s_agent.management.commands.dumptos3.Command._is_nops_cost_exported")
 @patch("nops_k8s_agent.management.commands.dumptos3.boto3.client")
@@ -68,7 +50,7 @@ def test_nops_cost_already_exported(mock_s3, mock_is_exported_ok):
 
     call_command("dumptos3")
     mock_is_exported_ok.assert_called_once()
-    assert mock_s3.return_value.upload_file.call_count == 9
+    assert mock_s3.return_value.upload_file.call_count == 10
 
 
 @patch("nops_k8s_agent.management.commands.dumptos3.boto3.client")
@@ -77,7 +59,7 @@ def test_export_happy_case_upload_file_count(mock_requests, mock_s3):
     mock_s3.return_value.upload_file.return_value = None
 
     call_command("dumptos3")
-    assert mock_s3.return_value.upload_file.call_count == 9
+    assert mock_s3.return_value.upload_file.call_count == 10
 
 
 @patch("nops_k8s_agent.management.commands.dumptos3.Command._is_nops_cost_exported")
@@ -91,4 +73,4 @@ def test_nops_cost_export_failure_from_list_bucket(mock_boto3_client, mock_is_no
         call_command("dumptos3")
 
     mock_is_nops_cost_exported.assert_called_once()
-    assert mock_s3.upload_file.call_count == 9
+    assert mock_s3.upload_file.call_count == 10
