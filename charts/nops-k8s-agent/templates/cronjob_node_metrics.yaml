@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ template "nops-k8s-agent.fullname" . }}-high
+  name: {{ template "nops-k8s-agent.fullname" . }}-node-metrics-high
 spec:
-  schedule: "2 * * * *"
+  schedule: "15 * * * *"
   jobTemplate:
     spec:
       backoffLimit: 1
@@ -45,6 +45,6 @@ spec:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["python", "manage.py", "dumptos3", "--module-to-collect", "nopscost", "--start-date", "", "--end-date", ""]
+            command: ["python", "manage.py", "dumptos3", "--module-to-collect", "node_metrics", "--start-date", "", "--end-date", ""]
           restartPolicy: Never
 {{ end }}
