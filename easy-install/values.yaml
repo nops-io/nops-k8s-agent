@@ -20,6 +20,14 @@ serviceAccount:
 cronjob:
   schedule: "5 * * * *"
 
+resources:
+  limits:
+    cpu: 500m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 4Gi
+
 env_variables:
   # Required paramters
   APP_PROMETHEUS_SERVER_ENDPOINT: "http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
