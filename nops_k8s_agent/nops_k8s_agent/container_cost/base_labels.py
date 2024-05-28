@@ -12,7 +12,7 @@ from loguru import logger
 
 from nops_k8s_agent.container_cost.base_prom import BaseProm
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
-from nops_k8s_agent.utils import derive_region_from_settings
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
 class BaseLabels(BaseProm):
@@ -26,7 +26,7 @@ class BaseLabels(BaseProm):
         "kube_pod_annotations": [],
     }
     FILE_PREFIX = "base_labels"
-    FILENAME = f"v{SCHEMA_VERSION_DATE}_base_labels_0-{derive_region_from_settings()}.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_base_labels_0-{derive_suffix_from_settings()}.parquet"
     CUSTOM_METRICS_FUNCTION = None
     CUSTOM_COLUMN = None
     POP_OUT_COLUMN = {"node": [], "pod": [], "namespace": []}
