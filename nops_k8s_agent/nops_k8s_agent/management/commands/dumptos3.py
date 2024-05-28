@@ -17,6 +17,7 @@ from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import mai
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
+from nops_k8s_agent.utils import derive_suffix_from_settings
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 
 
@@ -67,7 +68,7 @@ class Command(BaseCommand):
 
     def _get_s3_key(self, s3_prefix, start_time, cluster_arn):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
-        s3_key = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost.parquet"
+        s3_key = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost-{derive_suffix_from_settings()}.parquet"
         return s3_key
 
     def _is_nops_cost_exported(self, s3_bucket, s3_prefix, start_time, cluster_arn):

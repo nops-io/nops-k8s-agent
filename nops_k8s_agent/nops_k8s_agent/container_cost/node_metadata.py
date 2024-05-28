@@ -1,6 +1,6 @@
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
-
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 class NodeMetadata(BaseLabels):
     # This class to get pod metrics from prometheus and put it in dictionary
@@ -9,7 +9,7 @@ class NodeMetadata(BaseLabels):
         "kube_node_info": [],
     }
     FILE_PREFIX = "node_metadata"
-    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metadata_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metadata_0-{derive_suffix_from_settings()}.parquet"
     CUSTOM_COLUMN = {"instance_id": []}
     POP_OUT_COLUMN = {"node": [], "namespace": []}
 

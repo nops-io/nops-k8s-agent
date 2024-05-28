@@ -1,5 +1,6 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 class ContainerMetrics(BaseMetrics):
     # cAdvisor
@@ -15,6 +16,7 @@ class ContainerMetrics(BaseMetrics):
         "container_fs_writes_bytes_total": ["namespace", "pod", "container"],
         "container_cpu_utilization": ["namespace", "pod", "container"],
         "container_memory_utilization": ["namespace", "pod", "container"],
+        
     }
     FILE_PREFIX = "container_metrics"
-    FILENAME = f"v{SCHEMA_VERSION_DATE}_container_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_container_metrics_0-{derive_suffix_from_settings()}.parquet"
