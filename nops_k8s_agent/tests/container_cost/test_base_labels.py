@@ -3,19 +3,12 @@ from datetime import datetime
 from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
-from django.test import override_settings
 
 
 import pytest
 import pytz
 
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
-
-
-@pytest.fixture
-def set_django_settings():
-    with override_settings(NOPS_K8S_AGENT_CLUSTER_ARN="arn:aws:eks:us-west-2:123456789012:cluster/my-cluster"):
-        yield
 
 
 @pytest.fixture
