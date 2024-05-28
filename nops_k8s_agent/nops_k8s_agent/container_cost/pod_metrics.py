@@ -1,5 +1,6 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
 class PodMetrics(BaseMetrics):
@@ -29,4 +30,4 @@ class PodMetrics(BaseMetrics):
         ],
     }
     FILE_PREFIX = "pod_metrics"
-    FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_0-{derive_suffix_from_settings()}.parquet"
