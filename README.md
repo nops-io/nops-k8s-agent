@@ -13,6 +13,7 @@
   * [Option 1: Deploy Agent From Source Code](#deploy-agent-from-source-code)
   * [Option 2: Deploy Agent via Helm Repo (recommended)](#deploy-agent-via-helm-repo)
 - [Configure nOps Integration](#configure-nops-integration)
+- [Pod Rightsizing](wiki/pod_rightsizing/rightsizing.md)
 
 # Introduction to nOps Kubernetes Agent
 

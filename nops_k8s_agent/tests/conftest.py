@@ -1,4 +1,11 @@
+from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import Mock
+
+import kubernetes_asyncio.client
+import kubernetes_asyncio.client.api_client
 import pytest
+import pytest_asyncio
+from kubernetes_asyncio.config import load_incluster_config
 
 EXAMPLE_RESPONSE = [
     {
@@ -240,3 +247,123 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_skip_incluster_config_creation():
+    kubernetes_asyncio.config.load_incluster_config = Mock()
+
+    # Yield the mock to be used in the test
+    yield
+
+
+def _list_namespaced_pod_side_effect(namespace: str, label_selector: str):
+    items = []
+    if namespace == "opencost" and label_selector == "app.kubernetes.io/instance=opencost":
+        # Setup the return values of the mock methods and attributes
+        mock_metadata = Mock()
+        mock_metadata.configure_mock(name="opencost-1234", namespace="opencost")
+        containers = []
+
+        for i in range(1):
+            mock_container = Mock()
+            mock_container.configure_mock(name="opencost")
+            mock_container.configure_mock(resources=Mock(requests={"cpu": "200m"}))
+            containers.append(mock_container)
+
+        mock_item = Mock()
+        mock_item.configure_mock(metadata=mock_metadata)
+        mock_item.configure_mock(spec=Mock(containers=containers))
+        items.append(mock_item)
+
+    return Mock(items=items)
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_core_api():
+    async def list_namespaced_pod_side_effect(namespace: str, label_selector: str):
+        return _list_namespaced_pod_side_effect(namespace, label_selector)
+
+    # Store the original CoreV1Api to restore it later
+    original_core_v1_api = kubernetes_asyncio.client.CoreV1Api
+
+    # Create the mock objects
+    mock_api = Mock()
+
+    mock_list_namespaced_pod = AsyncMock()
+    mock_list_namespaced_pod.side_effect = list_namespaced_pod_side_effect
+    mock_api.list_namespaced_pod = mock_list_namespaced_pod
+
+    mock_list_namespace = AsyncMock()
+    mock_metadata = Mock()
+    mock_metadata.configure_mock(name="opencost")
+    mock_list_namespace.return_value = Mock(items=[Mock(metadata=mock_metadata)])
+    mock_api.list_namespace = mock_list_namespace
+
+    mock_patch_namespaced_pod = AsyncMock()
+    mock_api.patch_namespaced_pod = mock_patch_namespaced_pod
+
+    # Replace the CoreV1Api with the mock
+    kubernetes_asyncio.client.CoreV1Api = Mock(return_value=mock_api)
+
+    # Yield the mock to be used in the test
+    yield mock_api
+
+    # Clean up: Restore the original CoreV1Api
+    kubernetes_asyncio.client.CoreV1Api = original_core_v1_api
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_apps_api():
+    async def list_namespaced_deployment_side_effect(namespace: str, watch: bool = False):
+        items = []
+        if namespace == "opencost":
+            # Setup the return values of the mock methods and attributes
+            mock_metadata = Mock()
+            mock_metadata.configure_mock(name="opencost", namespace="opencost")
+            mock_selector = Mock()
+            mock_selector.configure_mock(match_labels={"app.kubernetes.io/instance": "opencost"})
+            mock_items = Mock()
+            mock_items.configure_mock(metadata=mock_metadata)
+            pod_template = _list_namespaced_pod_side_effect(namespace="opencost", label_selector="app.kubernetes.io/instance=opencost").items[0]
+            mock_items.configure_mock(spec=Mock(selector=mock_selector, template=pod_template))
+            items.append(mock_items)
+
+        return Mock(items=items)
+
+    # Store the original AppsV1Api to restore it later
+    original_apps_v1_api = kubernetes_asyncio.client.AppsV1Api
+
+    # Create the mock objects
+    mock_api = Mock()
+
+    mock_list_namespaced_deployment = AsyncMock()
+    mock_list_namespaced_deployment.side_effect = list_namespaced_deployment_side_effect
+    mock_api.list_namespaced_deployment = mock_list_namespaced_deployment
+
+    mock_patch_namespaced_deployment = AsyncMock()
+    mock_api.patch_namespaced_deployment = mock_patch_namespaced_deployment
+
+    # Replace the AppsV1Api with the mock
+    kubernetes_asyncio.client.AppsV1Api = Mock(return_value=mock_api)
+
+    # Yield the mock to be used in the test
+    yield mock_api
+
+    # Clean up: Restore the original AppsV1Api
+    kubernetes_asyncio.client.AppsV1Api = original_apps_v1_api
+
+
+@pytest_asyncio.fixture(scope="function")
+def patch_k8s_feature_gates():
+    with patch('nops_k8s_agent.rightsizing.dependency_ingection.services.ApiClient') as mock_api_client:
+        # Mock instance for the context manager
+        mock_api_instance = AsyncMock()
+        mock_api_client.return_value.__aenter__.return_value = mock_api_instance
+
+        # Mock for the api_response object
+        mock_api_response = AsyncMock()
+        mock_api_instance.call_api.return_value = mock_api_response
+        mock_api_response.read.return_value = 'kubernetes_feature_enabled{name="InPlacePodVerticalScaling",stage=""} 1'.encode("utf-8")
+
+        yield mock_api_instance

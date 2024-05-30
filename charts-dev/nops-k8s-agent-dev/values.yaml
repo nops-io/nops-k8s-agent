@@ -30,6 +30,7 @@ env_variables:
   APP_AWS_S3_PREFIX: "buffer/"
   # Optional parameters
   APP_ENV: "ci"
+  APP_NOPS_ENABLE_POD_RIGHTSIZING: False
   APP_NOPS_K8S_AGENT_TIMEOUT: "120"
   APP_NOPS_K8S_COLLECTOR_HOST : "app.nops.io"
   APP_NOPS_K8S_COLLECTOR_PORT: "443"
