@@ -22,12 +22,6 @@ class NodeMetrics(BaseMetrics):
             "node",
             "unit",
         ],
-        "node_cpu_utilization": [
-            "node",
-        ],
-        "node_memory_utilization": [
-            "node",
-        ],
         "node_total_hourly_cost": ["instance_type", "node", "provider_id"],
     }
     FILE_PREFIX = "node_metrics"
