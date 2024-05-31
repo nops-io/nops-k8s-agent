@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
     - name: nops-k8s-agent
-      image: ghcr.io/andremilk/nops-k8s-agent:latest
+      image: ghcr.io/nops-io/nops-k8s-agent:deploy
       command:
         - python
         - manage.py
