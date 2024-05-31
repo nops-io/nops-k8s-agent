@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nops-k8s-agent-pod
+  namespace: nops-k8s-agent
+spec:
+  containers:
+    - name: nops-k8s-agent
+      image: ghcr.io/andremilk/nops-k8s-agent:latest
+      command:
+        - python
+        - manage.py
+        - dumptos3
+        - '--module-to-collect'
+        - 'nopscost'
+        - '--start-date'
+        - $(START_DATE)
+        - '--end-date'
+        - $(END_DATE)
+      envFrom:
+        - configMapRef:
+            name: nops-k8s-agent-configmap
+      env:
+        - name: APP_APP_VERSION
+          value: 6.0.0
+        - name: APP_CHART_VERSION
+          value: 0.6.0
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: nops-k8s-agent
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nops-k8s-agent
+              key: aws_secret_access_key
+        - name: START_DATE
+          value: "2024-05-29"
+        - name: END_DATE
+          value: "2024-05-30"
+      resources:
+        limits:
+          cpu: 500m
+          memory: 4Gi
+        requests:
+          cpu: 500m
+          memory: 4Gi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      imagePullPolicy: Always
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 30
+  activeDeadlineSeconds: 120
+  dnsPolicy: ClusterFirst
+  serviceAccountName: nops-k8s-agent
+  securityContext: {}
+  schedulerName: default-scheduler
+

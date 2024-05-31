@@ -89,6 +89,7 @@ class Command(BaseCommand):
     def export_nopscost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
         try:
             if self._is_nops_cost_exported(s3_bucket, s3_prefix, start_time, cluster_arn):
+                print(f"File for nops_cost for {start_time} already exported. Skipping export.")
                 return
         except Exception as e:
             print(f"\nFailed to check previously exported nops-cost data: {e}")
@@ -98,6 +99,7 @@ class Command(BaseCommand):
             path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, start_time, cluster_arn)}"
             if processed_data is not None and not processed_data.empty:
                 processed_data.to_parquet(path)
+            print(f"\nnops_cost export successful for {start_time.year}-{start_time.month}-{start_time.day}")
         except Exception as e:
             print("\nError while exporting nopscost data: {}".format(str(e)))
             self.errors.append(e)
@@ -169,18 +171,25 @@ class Command(BaseCommand):
         end_date_str = options["end_date"]
         now = dt.datetime.now()
 
-        if start_date_str and end_date_str:
-            start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d")
-            end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d") + dt.timedelta(days=1)
-            for single_date in (start_date + dt.timedelta(n) for n in range(int((end_date - start_date).days))):
-                for hour in range(24):
-                    current_time = single_date + dt.timedelta(hours=hour)
-                    with DualOutput(self.log_path):
-                        for klass_name in self.yield_all_klass():
-                            self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, current_time, klass_name)
+        with DualOutput(self.log_path):
+            if start_date_str and end_date_str:
+                start_date = dt.datetime.strptime(start_date_str, "%Y-%m-%d")
+                end_date = dt.datetime.strptime(end_date_str, "%Y-%m-%d") + dt.timedelta(days=1)
+                print(f"\nExporting data for {start_date} until {end_date}")
+                for single_date in (start_date + dt.timedelta(n) for n in range(int((end_date - start_date).days))):
+                    if module_to_collect != "nopscost":
+                        for hour in range(24):
+                            current_time = single_date + dt.timedelta(hours=hour)
+                            if not module_to_collect or module_to_collect == "":
+                                self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+                                for klass_name in self.yield_all_klass():
+                                    self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, klass_name)
+                            else:
+                                self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, module_to_collect)
+                    else:
+                        self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, single_date)
 
-        else:
-            with DualOutput(self.log_path):
+            else:
                 if not module_to_collect or module_to_collect == "":
                     self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
                     for klass_name in self.yield_all_klass():
