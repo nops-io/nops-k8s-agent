@@ -55,12 +55,6 @@ if [ "$current_context" != "$APP_NOPS_K8S_AGENT_CLUSTER_ARN" ]; then
     echo "Switched context to $APP_NOPS_K8S_AGENT_CLUSTER_ARN successfully."
 fi
 
-# Ensure AGENT_AWS_ACCESS_KEY_ID and AGENT_AWS_SECRET_ACCESS_KEY are replaced
-if [[ $AGENT_AWS_ACCESS_KEY_ID == "<REPLACE-YourAccessKeyId>" || $AGENT_AWS_SECRET_ACCESS_KEY == "<REPLACE-YourSecretAccessKey>" ]]; then
-  echo "AWS credentials must be set before running this script."
-  exit 1
-fi
-
 if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>"  ]]; then
   echo "Agent environment variables must be set before running this script."
   exit 1
@@ -83,30 +77,6 @@ fi
 
 # Set kubectl context to use nops-k8s-agent namespace
 kubectl config set-context --current --namespace=$nops_k8s_agent_namespace || { echo "Failed to set kubectl context to nops-k8s-agent namespace"; exit 1; }
-
-# Check if the secret already exists
-nops_k8s_agent_secret="nops-k8s-agent"
-if kubectl get secret $nops_k8s_agent_secret --namespace $nops_k8s_agent_namespace >/dev/null 2>&1; then
-    echo "Secret 'nops-k8s-agent' already exists in namespace '${nops_k8s_agent_namespace}'. Updating it..."
-    # Command to update the existing secret
-    kubectl create secret generic $nops_k8s_agent_secret \
-    --from-literal=aws_access_key_id=$AGENT_AWS_ACCESS_KEY_ID \
-    --from-literal=aws_secret_access_key=$AGENT_AWS_SECRET_ACCESS_KEY \
-    --namespace=${nops_k8s_agent_namespace} --dry-run=client -o yaml | kubectl apply -f -
-else
-    echo "Secret 'nops-k8s-agent' does not exist in namespace '${nops_k8s_agent_namespace}'. Creating it..."
-    # Command to create the secret
-    if kubectl create secret generic $nops_k8s_agent_secret \
-    --from-literal=aws_access_key_id=$AGENT_AWS_ACCESS_KEY_ID \
-    --from-literal=aws_secret_access_key=$AGENT_AWS_SECRET_ACCESS_KEY \
-    --namespace=${nops_k8s_agent_namespace} --save-config; then
-        echo "Secret 'nops-k8s-agent' created successfully."
-    else
-        echo "Failed to create secret for AWS access."
-        exit 1
-    fi
-fi
-
 
 # Installing nops-Prometheus
 helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Failed to install Prometheus"; exit 1; }
