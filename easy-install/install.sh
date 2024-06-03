@@ -94,10 +94,10 @@ helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart 
 # Installing k8s-agent
 helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
 nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
+--set service_account_role=$SERVICE_ACCOUNT_ROLE \
 --set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
 --set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
 --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
---set env_variables.SERVICE_ACCOUNT_ROLE=$SERVICE_ACCOUNT_ROLE \
 --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
 --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
 
