@@ -5,8 +5,6 @@ set -e
 
 # Use the access key id and secret access key with writing permission to the setup bucket
 ####################  REPLACE THESE VALUES ############################
-AGENT_AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # This is in your cloudformation stack created on setup step
-AGENT_AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>" # This is in your cloudformation stack created on setup step
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
 #######################################################################
 
@@ -16,6 +14,22 @@ APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
 APP_PROMETHEUS_SERVER_ENDPOINT="http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
 
 PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus-ksm.yaml"
+
+derive_iam_role_arn() {
+    local eks_cluster_arn=$1
+    local role_name="nops-container-cost-agent"
+
+    # Extract the account ID and cluster name from the EKS cluster ARN
+    local account_id=$(echo "$eks_cluster_arn" | cut -d':' -f5)
+    local cluster_name=$(echo "$eks_cluster_arn" | awk -F'[:/]' '{print $NF}')
+
+    # Construct the IAM role ARN
+    local iam_role_arn="arn:aws:iam::$account_id:role/$role_name-$cluster_name"
+
+    echo "$iam_role_arn"
+}
+
+SERVICE_ACCOUNT_ROLE=$(derive_iam_role_arn "$APP_NOPS_K8S_AGENT_CLUSTER_ARN")
 
 # PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml" # this is with ksm disabled
 
@@ -113,6 +127,7 @@ nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/n
 --set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
 --set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
 --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
+--set env_variables.SERVICE_ACCOUNT_ROLE=$SERVICE_ACCOUNT_ROLE \
 --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
 --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
 
