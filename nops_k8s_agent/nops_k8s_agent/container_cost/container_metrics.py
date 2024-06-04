@@ -27,7 +27,7 @@ class ContainerMetrics(BaseMetrics):
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         if metric_name == "rate_container_cpu_usage_seconds_total":
-            query = 'rate(container_cpu_usage_seconds_total{pod!=""}[5m])'
+            query = 'rate(container_cpu_usage_seconds_total{pod!="",container!=""}[5m])'
             try:
                 response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
                 return response
