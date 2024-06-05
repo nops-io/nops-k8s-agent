@@ -18,20 +18,21 @@ PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/
 
 derive_iam_role_arn() {
     local eks_cluster_arn=$1
-    local role_name="nops-container-cost-agent"
+    local role_name="nops-ccost"
 
-    # Extract the account ID and cluster name from the EKS cluster ARN
+    # Extract the account ID, region, and cluster name from the EKS cluster ARN
     local account_id=$(echo "$eks_cluster_arn" | cut -d':' -f5)
+    local cluster_region=$(echo "$eks_cluster_arn" | cut -d':' -f4)
     local cluster_name=$(echo "$eks_cluster_arn" | awk -F'[:/]' '{print $NF}')
 
     # Construct the IAM role ARN
-    local iam_role_arn="arn:aws:iam::$account_id:role/$role_name-$cluster_name"
+    local iam_role_arn="arn:aws:iam::$account_id:role/${role_name}-${cluster_name}_${cluster_region}"
 
     echo "$iam_role_arn"
 }
 
 SERVICE_ACCOUNT_ROLE=$(derive_iam_role_arn "$APP_NOPS_K8S_AGENT_CLUSTER_ARN")
-
+echo "Using service account role: $SERVICE_ACCOUNT_ROLE"
 # PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus.yaml" # this is with ksm disabled
 
 # Check if helm and kubectl are installed
