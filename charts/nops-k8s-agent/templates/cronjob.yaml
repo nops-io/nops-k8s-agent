@@ -35,6 +35,6 @@ spec:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["python", "manage.py", "dumptos3", "--module-to-collect", "nopscost", "--start-date", "", "--end-date", ""]
+            command: ["python", "manage.py", "dumptos3", "--start-date", "", "--end-date", ""]
           restartPolicy: Never
 {{ end }}
