@@ -3,14 +3,17 @@ repos:
     rev: 22.6.0
     hooks:
       - id: black
+        language_version: python3.12
         exclude: ^(migrations/|libs/search/aggregation.py)
   - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
+    rev: 5.13.2
     hooks:
       - id: isort
         args: ["--profile", "black"]
+        language_version: python3.12
   - repo: https://github.com/pycqa/flake8
     rev: 5.0.4
     hooks:
       - id: flake8
         args: ["--ignore", "E501,F401"]
+        language_version: python3.12
