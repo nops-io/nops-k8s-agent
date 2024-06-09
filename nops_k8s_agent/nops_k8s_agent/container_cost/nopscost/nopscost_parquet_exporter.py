@@ -209,12 +209,12 @@ def process_result(result, config):
     return processed_data
 
 
-def main_command():
+def main_command(window_start, window_end):
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
     """
-    config = get_config()
+    config = get_config(window_start=window_start, window_end=window_end)
     logger.debug("Configuration: %s", config)
     logger.info("Retrieving data from nops-cost API")
     result = request_data(config)

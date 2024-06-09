@@ -92,7 +92,6 @@ class Command(BaseCommand):
 
         log_path = self.retry_log_path if retry else self.log_path
         self.setup_logging(log_path)
-
         with DualOutput(log_path):
             if modules_to_retry:
                 self.logger.info(f"Retrying for {modules_to_retry}")
@@ -112,7 +111,7 @@ class Command(BaseCommand):
                     self.process_current_data(
                         s3, s3_bucket, s3_prefix, cluster_arn, module_to_collect, now, modules_to_retry
                     )
-            except Exception as e:
+            except Exception:
                 import traceback
 
                 self.logger.debug(f"Exception on handle call: {traceback.format_exc()}")
@@ -152,14 +151,14 @@ class Command(BaseCommand):
     ):
         self.logger.debug(f"Processing single date: {single_date}")
         if module_to_collect != "nopscost":
-            self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, single_date)
+            self.export_nopscost_data(s3, s3_bucket, s3_prefix, cluster_arn, single_date)
             for hour in range(24):
                 current_time = single_date + dt.timedelta(hours=hour)
                 self.process_hourly_data(
                     s3, s3_bucket, s3_prefix, cluster_arn, module_to_collect, current_time, modules_to_retry
                 )
         else:
-            self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, single_date)
+            self.export_nopscost_data(s3, s3_bucket, s3_prefix, cluster_arn, single_date)
 
     def process_hourly_data(
         self, s3, s3_bucket, s3_prefix, cluster_arn, module_to_collect, current_time, modules_to_retry
@@ -175,13 +174,13 @@ class Command(BaseCommand):
     def process_current_data(self, s3, s3_bucket, s3_prefix, cluster_arn, module_to_collect, now, modules_to_retry):
         self.logger.debug(f"Processing current data with module: {module_to_collect}")
         if not module_to_collect or module_to_collect == "":
-            self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+            self.export_nopscost_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
             for klass_name in self.yield_all_klass():
                 if not modules_to_retry or klass_name in modules_to_retry:
                     self.export_data(s3, s3_bucket, s3_prefix, cluster_arn, now, klass_name)
         else:
             if module_to_collect == "nopscost":
-                self.export_nopscost_data(s3_bucket, s3_prefix, cluster_arn, now)
+                self.export_nopscost_data(s3, s3_bucket, s3_prefix, cluster_arn, now)
             else:
                 if isinstance(module_to_collect, list):
                     for klass in module_to_collect:
@@ -226,8 +225,54 @@ class Command(BaseCommand):
                 return True
         return False
 
-    def export_nopscost_data(self, s3_bucket, s3_prefix, cluster_arn, start_time):
+    def _should_backfill(self, s3, s3_bucket, s3_prefix, start_time, cluster_arn):
+        backfill_days = 3
+        # List objects for the entire month
+        s3_key_prefix = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/"
+        response = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix)
+        self.logger.info(f"response in should backfill: {response}")
+        # If no contents, we need to backfill the oldest day in the range
+        if "Contents" not in response:
+            return start_time - dt.timedelta(days=backfill_days)
+
+        existing_keys = set(obj["Key"] for obj in response["Contents"])
+
+        for i in range(backfill_days, 0, -1):
+            backfill_date = start_time - dt.timedelta(days=i)
+            s3_key = self._get_s3_key(s3_prefix, backfill_date, cluster_arn)
+            if s3_key not in existing_keys:
+                return backfill_date
+
+        return None
+
+    def _make_nopscost_exporting_request(self, s3_bucket, s3_prefix, cluster_arn, window_start, window_end):
         try:
+            window_start_timestamp = int(window_start.timestamp())
+            window_end_timestamp = int(window_end.timestamp())
+            processed_data = main_command(window_start=window_start_timestamp, window_end=window_end_timestamp)
+            path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, window_start, cluster_arn)}"
+            if processed_data is not None and not processed_data.empty:
+                processed_data.to_parquet(path)
+            self.logger.info(
+                f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
+            )
+        except Exception as e:
+            self.logger.info(f"apagar - excecao aqui: {e}")
+            self.logger.debug(f"Error while exporting nopscost data: {e}")
+            self.errors.append("nops_cost")
+
+    def export_nopscost_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, is_backfilling=False):
+        window_end = None
+        window_start = start_time
+        try:
+            if not is_backfilling:
+                backfill_date = self._should_backfill(s3, s3_bucket, s3_prefix, start_time, cluster_arn)
+                if backfill_date:
+                    self.logger.info(f"Backfilling for {backfill_date}")
+                    window_start = backfill_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    window_end = start_time.replace(hour=23, minute=59, second=59, microsecond=0)
+                    self._make_nopscost_exporting_request(s3_bucket, s3_prefix, cluster_arn, window_start, window_end)
+                    return
             if self._is_nops_cost_exported(s3_bucket, s3_prefix, start_time, cluster_arn):
                 self.logger.info(f"File for nops_cost for {start_time} already exported. Skipping export.")
                 return
@@ -237,15 +282,7 @@ class Command(BaseCommand):
                 f"Failed to check if nops-cost data is exported for {start_time}\nProceeding with export."
             )
             self.errors.append("nops_cost")
-        try:
-            processed_data = main_command()
-            path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, start_time, cluster_arn)}"
-            if processed_data is not None and not processed_data.empty:
-                processed_data.to_parquet(path)
-            self.logger.info(f"nops_cost export successful for {start_time.year}-{start_time.month}-{start_time.day}")
-        except Exception as e:
-            self.logger.debug(f"Error while exporting nopscost data: {e}")
-            self.errors.append("nops_cost")
+        self._make_nopscost_exporting_request(s3_bucket, s3_prefix, cluster_arn, window_start, window_end)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, klass_name):
         tmp_path = f"/tmp/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/"
@@ -274,7 +311,7 @@ class Command(BaseCommand):
             s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
             self.logger.debug(f"File {tmp_file} successfully uploaded to s3://{s3_bucket}/{s3_key}")
             self.logger.info(f"Successfully exported {klass_name}")
-        except KeyError as e:
+        except KeyError:
             self.logger.error(f"Wrong metric module name: {klass_name}")
             return
         except Exception as e:
