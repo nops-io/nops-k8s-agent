@@ -230,7 +230,6 @@ class Command(BaseCommand):
         # List objects for the entire month
         s3_key_prefix = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/"
         response = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix)
-        self.logger.info(f"response in should backfill: {response}")
         # If no contents, we need to backfill the oldest day in the range
         if "Contents" not in response:
             return start_time - dt.timedelta(days=backfill_days)
