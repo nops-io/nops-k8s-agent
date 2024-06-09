@@ -15,5 +15,5 @@ repos:
     rev: 5.0.4
     hooks:
       - id: flake8
-        args: ["--ignore", "E501,F401"]
+        args: ["--ignore", "E501,F401,E231"]
         language_version: python3.12

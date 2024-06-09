@@ -203,8 +203,12 @@ def process_result(result, config):
         logger.error(f"Value error: {err}")
         return None
     except KeyError as err:
+        error_message = str(err)
         logger.error(f"Key error: {err}")
         logger.debug(traceback.format_exc())
+        if "Only a column name can be used for the key in a dtype mappings argument." in error_message:
+            logger.info("No data available for nops-cost on specified rante.")
+            return None
         raise err
     return processed_data
 
