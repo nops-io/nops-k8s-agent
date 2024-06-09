@@ -19,6 +19,9 @@ service:
 serviceAccount:
   create: true
 
+secrets:
+  useAwsCredentials: false
+
 cronjob:
   schedule: "5 * * * *"
 
