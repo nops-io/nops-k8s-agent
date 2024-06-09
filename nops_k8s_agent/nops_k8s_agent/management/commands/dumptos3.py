@@ -226,17 +226,20 @@ class Command(BaseCommand):
         return False
 
     def _should_backfill(self, s3, s3_bucket, s3_prefix, start_time, cluster_arn):
+        backfill_windows = list(range(1, 24, 6))
+        if start_time.hour not in backfill_windows:
+            self.logger.info("Skipping backfill check.")
+            self.logger.info(f"Current hour: {start_time.hour}")
+            self.logger.info(f"Backfill local hours: {backfill_windows}")
+            return False
         backfill_days = 3
         # List objects for the entire month
         s3_key_prefix = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/"
         response = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix)
-        # If no contents, we need to backfill the oldest day in the range
-        if "Contents" not in response:
-            return start_time - dt.timedelta(days=backfill_days)
 
         existing_keys = set(obj["Key"] for obj in response["Contents"])
 
-        for i in range(backfill_days, 0, -1):
+        for i in range(0, backfill_days):
             backfill_date = start_time - dt.timedelta(days=i)
             s3_key = self._get_s3_key(s3_prefix, backfill_date, cluster_arn)
             if s3_key not in existing_keys:
@@ -260,18 +263,17 @@ class Command(BaseCommand):
             self.logger.debug(f"Error while exporting nopscost data: {e}")
             self.errors.append("nops_cost")
 
-    def export_nopscost_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, is_backfilling=False):
+    def export_nopscost_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
         window_end = None
         window_start = start_time
         try:
-            if not is_backfilling:
-                backfill_date = self._should_backfill(s3, s3_bucket, s3_prefix, start_time, cluster_arn)
-                if backfill_date:
-                    self.logger.info(f"Backfilling for {backfill_date}")
-                    window_start = backfill_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                    window_end = start_time.replace(hour=23, minute=59, second=59, microsecond=0)
-                    self._make_nopscost_exporting_request(s3_bucket, s3_prefix, cluster_arn, window_start, window_end)
-                    return
+            backfill_date = self._should_backfill(s3, s3_bucket, s3_prefix, start_time, cluster_arn)
+            if backfill_date:
+                self.logger.info(f"Backfilling for {backfill_date}")
+                window_start = backfill_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                window_end = backfill_date.replace(hour=23, minute=59, second=59, microsecond=0)
+                self._make_nopscost_exporting_request(s3_bucket, s3_prefix, cluster_arn, window_start, window_end)
+                return
             if self._is_nops_cost_exported(s3_bucket, s3_prefix, start_time, cluster_arn):
                 self.logger.info(f"File for nops_cost for {start_time} already exported. Skipping export.")
                 return
