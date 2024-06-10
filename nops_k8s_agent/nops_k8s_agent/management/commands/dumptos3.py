@@ -256,11 +256,11 @@ class Command(BaseCommand):
 
             if processed_data is not None and not processed_data.empty:
                 processed_data.to_parquet(path)
-            if not window_start:
-                window_start = dt.datetime.now()
-            self.logger.info(
-                f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
-            )
+                if not window_start:
+                    window_start = dt.datetime.now()
+                self.logger.info(
+                    f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
+                )
         except Exception as e:
             self.logger.debug(f"Error while exporting nopscost data: {e}")
             self.errors.append("nops_cost")
