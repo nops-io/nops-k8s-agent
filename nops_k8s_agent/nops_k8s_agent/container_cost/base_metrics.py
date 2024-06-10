@@ -26,7 +26,7 @@ class BaseMetrics(BaseProm):
         group_by_list = self.list_of_metrics.get(metric_name)
         group_by_str = ",".join(group_by_list)
 
-        query = f"avg(avg_over_time({metric_name}[{step}])) by ({group_by_str})"
+        query = f"{metric_name}[{step}]"
         try:
             response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
             return response
@@ -44,7 +44,7 @@ class BaseMetrics(BaseProm):
         return metrics
 
     def convert_to_table_and_save(
-        self, period: str, current_time: datetime = None, step: str = "5m", filename: str = FILENAME
+        self, period: str, current_time: datetime = None, step: str = "60m", filename: str = FILENAME
     ) -> None:
         now = datetime.now(pytz.utc)
         if current_time is None:
