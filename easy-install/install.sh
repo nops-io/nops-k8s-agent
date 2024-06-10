@@ -50,18 +50,18 @@ echo "Using service account role: $SERVICE_ACCOUNT_ROLE"
 
 # Check if helm and kubectl are installed
 if ! command -v kubectl &>/dev/null; then
-    echo "kubectl is not installed. Please install kubectl and try again."
+    echo "Error: kubectl is not installed. Please install kubectl and try again."
     exit 1
 fi
 
 if ! command -v helm &>/dev/null; then
-    echo "Helm is not installed. Please install Helm and try again."
+    echo "Error: Helm is not installed. Please install Helm and try again."
     exit 1
 fi
 
 if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
     if [[ $CUSTOM_REGISTRY == "<REPLACE-YourCustomRegistry>" ]]; then
-    echo "Set your custom registry url."
+    echo "Error: Set your custom registry url."
     exit 1
     fi
 fi
@@ -72,14 +72,14 @@ current_context=$(kubectl config current-context)
 if [ "$current_context" != "$APP_NOPS_K8S_AGENT_CLUSTER_ARN" ]; then
     echo "Current context ($current_context) is not set to required ARN ($APP_NOPS_K8S_AGENT_CLUSTER_ARN). Attempting to switch..."
     if ! kubectl config use-context "$APP_NOPS_K8S_AGENT_CLUSTER_ARN"; then
-        echo "Failed to switch to context $APP_NOPS_K8S_AGENT_CLUSTER_ARN. Please check your configuration."
+        echo "Error: Failed to switch to context $APP_NOPS_K8S_AGENT_CLUSTER_ARN. Please check your configuration."
         exit 1
     fi
     echo "Switched context to $APP_NOPS_K8S_AGENT_CLUSTER_ARN successfully."
 fi
 
 if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>"  ]]; then
-  echo "Agent environment variables must be set before running this script."
+  echo "Error: Cluster ARN variables must be set before running this script."
   exit 1
 fi
 
@@ -93,7 +93,7 @@ else
     if kubectl create namespace nops-k8s-agent >/dev/null 2>&1; then
         echo "Namespace 'nops-k8s-agent' created successfully."
     else
-        echo "Failed to create namespace 'nops-k8s-agent'."
+        echo "Error: Failed to create namespace 'nops-k8s-agent'."
         exit 1
     fi
 fi
@@ -102,7 +102,7 @@ fi
 if [[ "$USE_SECRETS" == "true" ]]; then
     # Ensure AGENT_AWS_ACCESS_KEY_ID and AGENT_AWS_SECRET_ACCESS_KEY are replaced
     if [[ $AGENT_AWS_ACCESS_KEY_ID == "<REPLACE-YourAccessKeyId>" || $AGENT_AWS_SECRET_ACCESS_KEY == "<REPLACE-YourSecretAccessKey>" ]]; then
-    echo "AWS credentials must be set before running this script."
+    echo "Error: AWS credentials must be set before running this script."
     exit 1
     fi
 
@@ -124,14 +124,14 @@ if [[ "$USE_SECRETS" == "true" ]]; then
         --namespace=${nops_k8s_agent_namespace} --save-config; then
             echo "Secret 'nops-k8s-agent' created successfully."
         else
-            echo "Failed to create secret for AWS access."
+            echo "Error: Failed to create secret for AWS access."
             exit 1
         fi
     fi
 fi
 
 # Set kubectl context to use nops-k8s-agent namespace
-kubectl config set-context --current --namespace=$nops_k8s_agent_namespace || { echo "Failed to set kubectl context to nops-k8s-agent namespace"; exit 1; }
+kubectl config set-context --current --namespace=$nops_k8s_agent_namespace || { echo "Error: Failed to set kubectl context to nops-k8s-agent namespace"; exit 1; }
 
 
 if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
@@ -144,7 +144,7 @@ if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
         --set kube-state-metrics.image.repository="kube-state-metrics/kube-state-metrics" \
         --set prometheus-node-exporter.image.registry=$CUSTOM_REGISTRY \
         --set prometheus-node-exporter.image.repository="prometheus/node-exporter" \
-        || { echo "Failed to install Prometheus"; exit 1; }
+        || { echo "Error: Failed to install Prometheus"; exit 1; }
 
     # # Installing nops-cost
     helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
@@ -157,7 +157,7 @@ if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
     --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT \
     --set opencost.exporter.image.registry=$CUSTOM_REGISTRY \
     --set opencost.exporter.image.repository="opencost/opencost" \
-    || { echo "Failed to install nops-cost"; exit 1; }
+    || { echo "Error: Failed to install nops-cost"; exit 1; }
 
     # Installing k8s-agent
     helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
@@ -169,11 +169,11 @@ if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
     --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
     --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX \
     --set image.repository="$CUSTOM_REGISTRY/nops-io/nops-k8s-agent" \
-    || { echo "Failed to install k8s-agent"; exit 1; }
+    || { echo "Error: Failed to install k8s-agent"; exit 1; }
 
 else
     # Installing nops-Prometheus
-    helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Failed to install Prometheus"; exit 1; }
+    helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Error: Failed to install Prometheus"; exit 1; }
 
     # # Installing nops-cost
     helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
@@ -183,7 +183,7 @@ else
     --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
     --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
     --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
-    --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT  || { echo "Failed to install nops-cost"; exit 1; }
+    --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT  || { echo "Error: Failed to install nops-cost"; exit 1; }
 
     # Installing k8s-agent
     helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
@@ -194,7 +194,7 @@ else
     --set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
     --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
     --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
-    --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
+    --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Error: Failed to install k8s-agent"; exit 1; }
 fi
 
 echo "All operations completed successfully."
