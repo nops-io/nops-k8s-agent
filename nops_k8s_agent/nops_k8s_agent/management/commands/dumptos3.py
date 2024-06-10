@@ -239,7 +239,7 @@ class Command(BaseCommand):
 
         existing_keys = set(obj["Key"] for obj in response.get("Contents", []))
 
-        for i in range(0, backfill_days):
+        for i in range(1, backfill_days + 1):
             backfill_date = start_time - dt.timedelta(days=i)
             s3_key = self._get_s3_key(s3_prefix, backfill_date, cluster_arn)
             if s3_key not in existing_keys:
