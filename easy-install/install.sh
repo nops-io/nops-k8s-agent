@@ -3,15 +3,23 @@
 # Exit script on error
 set -e
 
-####################  REPLACE THESE VALUES ############################
+####################  REPLACE CLUSTER ARN #############################
 
 APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
-USE_SECRETS=false # If you want to use IAM User secrets instead of service account roles, change this to true
 
-if [[ $USE_SECRETS ]]; then
-AGENT_AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>"
+#######################################################################
+#######################################################################
+################### OPTIONAL CUSTOM SETTINGS ##########################
+
+# Set these if you have a custom registry to pull images from
+
+USE_CUSTOM_REGISTRY=false # Change this to true, if necessary
+CUSTOM_REGISTRY="<REPLACE-YourCustomRegistry>" # Set here the url to your custom registry
+
+# Set these if you don't want to use OIDC and service account roles
+USE_SECRETS=false # If you want to use IAM User secrets instead of service account roles, change this to true
+AGENT_AWS_ACCESS_KEY_ID="<REPLACE-YourAccessKeyId>" # Set your credentials here, if necessary
 AGENT_AWS_SECRET_ACCESS_KEY="<REPLACE-YourSecretAccessKey>"
-fi
 #######################################################################
 
 
@@ -50,6 +58,14 @@ if ! command -v helm &>/dev/null; then
     echo "Helm is not installed. Please install Helm and try again."
     exit 1
 fi
+
+if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
+    if [[ $CUSTOM_REGISTRY == "<REPLACE-YourCustomRegistry>" ]]; then
+    echo "Set your custom registry url."
+    exit 1
+    fi
+fi
+
 
 # Check current kubectl context and compare it with the required ARN
 current_context=$(kubectl config current-context)
@@ -117,29 +133,68 @@ fi
 # Set kubectl context to use nops-k8s-agent namespace
 kubectl config set-context --current --namespace=$nops_k8s_agent_namespace || { echo "Failed to set kubectl context to nops-k8s-agent namespace"; exit 1; }
 
-# Installing nops-Prometheus
-helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Failed to install Prometheus"; exit 1; }
 
-# # Installing nops-cost
-helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
---namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
---set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
---set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
---set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
---set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
---set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
---set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT  || { echo "Failed to install nops-cost"; exit 1; }
+if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
+    # Installing nops-Prometheus
+    helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts \
+        --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL \
+        --set server.image.repository="$CUSTOM_REGISTRY/prometheus/prometheus" \
+        --set configmapReload.prometheus.image.repository="$CUSTOM_REGISTRY/prometheus-operator/prometheus-config-reloader" \
+        --set kube-state-metrics.image.registry=$CUSTOM_REGISTRY \
+        --set kube-state-metrics.image.repository="kube-state-metrics/kube-state-metrics" \
+        --set prometheus-node-exporter.image.registry=$CUSTOM_REGISTRY \
+        --set prometheus-node-exporter.image.repository="prometheus/node-exporter" \
+        || { echo "Failed to install Prometheus"; exit 1; }
 
-# Installing k8s-agent
-helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
-nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
---set service_account_role=$SERVICE_ACCOUNT_ROLE \
---set secrets.useAwsCredentials=$USE_SECRETS \
---set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
---set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
---set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
---set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
---set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
+    # # Installing nops-cost
+    helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
+    --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
+    --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
+    --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
+    --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
+    --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
+    --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
+    --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT \
+    --set opencost.exporter.image.registry=$CUSTOM_REGISTRY \
+    --set opencost.exporter.image.repository="opencost/opencost" \
+    || { echo "Failed to install nops-cost"; exit 1; }
 
+    # Installing k8s-agent
+    helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
+    nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
+    --set service_account_role=$SERVICE_ACCOUNT_ROLE \
+    --set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
+    --set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
+    --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
+    --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
+    --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX \
+    --set image.repository="$CUSTOM_REGISTRY/nops-io/nops-k8s-agent" \
+    || { echo "Failed to install k8s-agent"; exit 1; }
+
+else
+    # Installing nops-Prometheus
+    helm upgrade --install nops-prometheus prometheus --repo https://prometheus-community.github.io/helm-charts  --namespace nops-prometheus-system --create-namespace -f $PROMETHEUS_CONFIG_URL || { echo "Failed to install Prometheus"; exit 1; }
+
+    # # Installing nops-cost
+    helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
+    --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
+    --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
+    --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
+    --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
+    --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
+    --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
+    --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT  || { echo "Failed to install nops-cost"; exit 1; }
+
+    # Installing k8s-agent
+    helm upgrade -i nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent \
+    nops-k8s-agent --namespace nops-k8s-agent -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/values.yaml \
+    --set service_account_role=$SERVICE_ACCOUNT_ROLE \
+    --set secrets.useAwsCredentials=$USE_SECRETS \
+    --set env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN=$APP_NOPS_K8S_AGENT_CLUSTER_ARN \
+    --set env_variables.APP_PROMETHEUS_SERVER_ENDPOINT=$APP_PROMETHEUS_SERVER_ENDPOINT \
+    --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
+    --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
+    --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Failed to install k8s-agent"; exit 1; }
+fi
 
 echo "All operations completed successfully."
