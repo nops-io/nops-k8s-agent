@@ -7,7 +7,7 @@ spec:
   schedule: "2 * * * *"
   jobTemplate:
     spec:
-      backoffLimit: 1
+      backoffLimit: 0
       template:
         spec:
           activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
@@ -30,11 +30,23 @@ spec:
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
+              {{- if .Values.secrets.useAwsCredentials }}
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_access_key_id
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_secret_access_key
+              {{- end }}
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
             imagePullPolicy:  {{ .Values.image.pullPolicy }}
-            command: ["python", "manage.py", "dumptos3", "--module-to-collect", "nopscost", "--start-date", "", "--end-date", ""]
+            command: ["python", "manage.py", "dumptos3", "--start-date", "", "--end-date", ""]
           restartPolicy: Never
 {{ end }}

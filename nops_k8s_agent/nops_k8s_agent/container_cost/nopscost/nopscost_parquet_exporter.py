@@ -1,10 +1,13 @@
-"""OpenCost parquet exporter.
+"""
+OpenCost parquet exporter.
 
 This module exports data from OpenCost API to parquet format, making it suitable
 for further analysis or storage in data warehouses.
 """
+import logging
 import os
 import sys
+import traceback
 from datetime import datetime
 from datetime import timedelta
 
@@ -14,46 +17,34 @@ import botocore.exceptions as boto_exceptions
 import pandas as pd
 import requests
 
+# Set up a custom logger for this module
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Adjust the level as needed
 
-def get_config(
-    hostname=None,
-    port=None,
-    window_start=None,
-    window_end=None,
-    aggregate_by=None,
-    step=None,
-):
+# Console handler for standard output
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # Adjust the level as needed
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(console_formatter)
+
+# File handler for logging to file
+log_path = "/tmp/logfile.log"
+file_handler = logging.FileHandler(log_path)
+file_handler.setLevel(logging.DEBUG)  # Adjust the level as needed
+file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(file_formatter)
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+
+
+def get_config(hostname=None, port=None, window_start=None, window_end=None, aggregate_by=None, step=None):
     """
     Get configuration for the parquet exporter based on either provided
     parameters or environment variables.
-
-    Parameters:
-    - hostname (str): Hostname for the OpenCost service,
-                      defaults to the 'NOPSCOST_SVC_HOSTNAME' environment variable,
-                      or 'localhost' if the environment variable is not set.
-    - port (int): Port number for the OpenCost service,
-                  defaults to the 'NOPSCOST_SVC_PORT' environment variable,
-                  or 9003 if the environment variable is not set.
-    - window_start (str): Start datetime window for fetching data, in ISO format,
-                          defaults to yesterday's date at 00:00:00 if not set.
-    - window_end (str): End datetime window for fetching data, in ISO format,
-                        defaults to yesterday's date at 23:59:59 if not set.
-    - aggregate_by (str): Criteria for aggregating data, separated by commas,
-                          defaults to the 'NOPSCOST_AGGREGATE' environment variable,
-                          or 'cluster,namespace,deployment,statefulset,job,controller,controllerKind,pod,container' if not set.
-    - step (str): Granularity for the data aggregation,
-                  defaults to the 'NOPSCOST_STEP' environment variable,
-                  or '1h' if not set.
-
-    Returns:
-    - dict: Configuration dictionary with keys for 'url', 'params',
-         'data_types', 'ignored_alloc_keys', and 'rename_columns_config'.
     """
     config = {}
 
-    # If function was called passing parameters the default value is ignored and environment
-    # variable is also ignored.
-    # This is done, so passing parameters have precedence to environment variables.
     if hostname is None:
         hostname = os.environ.get("NOPSCOST_SVC_HOSTNAME", "nops-cost.nops-cost.svc.cluster.local")
     if port is None:
@@ -67,7 +58,6 @@ def get_config(
         step = os.environ.get("NOPSCOST_STEP", "1h")
 
     config["url"] = f"http://{hostname}:{port}/allocation/compute"
-    # If window is not specified assume we want yesterday data.
     if window_start is None or window_end is None:
         yesterday = datetime.now() - timedelta(1)
         window_start = int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
@@ -83,9 +73,6 @@ def get_config(
         ("format", "json"),
         ("step", step),
     )
-    # This is required to ensure consistency without this
-    # we could have type change from int to float over time
-    # And this will result in an HIVE PARTITION SCHEMA MISMATCH
     config["data_types"] = {
         "cpuCoreHours": "float",
         "cpuCoreRequestAverage": "float",
@@ -146,28 +133,19 @@ def get_config(
 def request_data(config):
     """
     Request data from the OpenCost service using the provided configuration.
-
-    Parameters:
-    - config (dict): Configuration dictionary with necessary URL and parameters for the API request.
-
-    Returns:
-    - dict or None: The response from the OpenCost API parsed as a dictionary, or None if an error
-                    occurs.
     """
     url, params = config["url"], config["params"]
     try:
         response = requests.get(
             url,
             params=params,
-            # 15 seconds connect timeout
-            # No read timeout, in case it takes a long
             timeout=(15, None),
         )
         response.raise_for_status()
         if "application/json" in response.headers["content-type"]:
             response_object = response.json()["data"]
             return response_object
-        print(f"Invalid content type: {response.headers['content-type']}")
+        logger.error(f"Invalid content type: {response.headers['content-type']}")
         return None
     except (
         requests.exceptions.RequestException,
@@ -176,24 +154,15 @@ def request_data(config):
         ValueError,
         KeyError,
     ) as err:
-        print(f"Request error: {err}")
+        logger.error(f"Request error: {err}")
         return None
 
 
 def process_result(result, config):
     """
     Process raw results from the OpenCost API data request.
-
-    Parameters:
-    - result (dict): Raw response data from the OpenCost API.
-    - config (dict): Configuration dictionary with data types and other processing options.
-
-    Returns:
-    - DataFrame or None: Processed data as a Pandas DataFrame, or None if an error occurs.
     """
     for split in result:
-        # Remove entry for unmounted pv's .
-        # this break the table schema in athena
         split.pop("__unmounted__/__unmounted__/__unmounted__", None)
     for split in result:
         for alloc_name in split.keys():
@@ -222,39 +191,39 @@ def process_result(result, config):
         processed_data.rename(columns=config["rename_columns_config"], inplace=True)
         processed_data = processed_data.astype(config["data_types"])
     except pd.errors.EmptyDataError as err:
-        print(f"No data: {err}")
+        logger.error(f"No data: {err}")
         return None
     except pd.errors.ParserError as err:
-        print(f"Error parsing data: {err}")
+        logger.error(f"Error parsing data: {err}")
         return None
     except pd.errors.MergeError as err:
-        print(f"Data merge error: {err}")
+        logger.error(f"Data merge error: {err}")
         return None
     except ValueError as err:
-        print(f"Value error: {err}")
+        logger.error(f"Value error: {err}")
         return None
     except KeyError as err:
-        print(f"Key error: {err}")
-        import traceback
-
-        traceback_info = traceback.format_exc()
-        print(traceback_info)
-        return None
+        error_message = str(err)
+        logger.error(f"Key error: {err}")
+        logger.debug(traceback.format_exc())
+        if "Only a column name can be used for the key in a dtype mappings argument." in error_message:
+            logger.info("No data available for nops-cost on specified rante.")
+            return None
+        raise err
     return processed_data
 
 
-def main_command():
+def main_command(window_start=None, window_end=None):
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
     """
-    print("Starting run")
-    config = get_config()
-    print(config)
-    print("Retrieving data from nops-cost api")
+    config = get_config(window_start=window_start, window_end=window_end)
+    logger.debug("Configuration: %s", config)
+    logger.info("Retrieving data from nops-cost API")
     result = request_data(config)
     if result:
-        print("nOpsCost data retrieved successfully")
-        print("Processing the data")
+        logger.debug("nOpsCost data retrieved successfully")
+        logger.debug("Processing the data")
         processed_data = process_result(result, config)
         return processed_data
