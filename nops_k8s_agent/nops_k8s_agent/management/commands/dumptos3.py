@@ -237,7 +237,7 @@ class Command(BaseCommand):
         s3_key_prefix = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/"
         response = s3.list_objects_v2(Bucket=s3_bucket, Prefix=s3_key_prefix)
 
-        existing_keys = set(obj["Key"] for obj in response["Contents"])
+        existing_keys = set(obj["Key"] for obj in response.get("Contents", []))
 
         for i in range(0, backfill_days):
             backfill_date = start_time - dt.timedelta(days=i)
@@ -278,6 +278,7 @@ class Command(BaseCommand):
                 f"Failed to check if nops-cost data is exported for {start_time}\nProceeding with export."
             )
             self.errors.append("nops_cost")
+        window_start, window_end = None, None
         self._make_nopscost_exporting_request(s3_bucket, s3_prefix, cluster_arn, window_start, window_end)
 
     def export_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time, klass_name):
