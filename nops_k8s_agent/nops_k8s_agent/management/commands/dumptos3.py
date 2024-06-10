@@ -259,7 +259,6 @@ class Command(BaseCommand):
                 f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
             )
         except Exception as e:
-            self.logger.info(f"apagar - excecao aqui: {e}")
             self.logger.debug(f"Error while exporting nopscost data: {e}")
             self.errors.append("nops_cost")
 
