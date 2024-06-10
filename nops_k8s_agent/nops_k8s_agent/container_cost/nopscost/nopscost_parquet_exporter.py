@@ -213,7 +213,7 @@ def process_result(result, config):
     return processed_data
 
 
-def main_command(window_start, window_end):
+def main_command(window_start=None, window_end=None):
     """
     Main function to execute the workflow of fetching, processing, and saving data
     for yesterday.
