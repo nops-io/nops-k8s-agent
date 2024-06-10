@@ -232,7 +232,7 @@ def main_command(window_start=None, window_end=None):
     logger.info("Retrieving data from nops-cost API")
     result = request_data(config)
     if result:
-        logger.debug("nOpsCost data retrieved successfully")
-        logger.debug("Processing the data")
+        logger.info("nOpsCost data retrieved successfully")
+        logger.info("Processing the data")
         processed_data = process_result(result, config)
         return processed_data

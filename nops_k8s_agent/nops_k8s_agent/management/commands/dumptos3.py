@@ -211,6 +211,8 @@ class Command(BaseCommand):
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
 
     def _get_s3_key(self, s3_prefix, start_time, cluster_arn):
+        if not start_time:
+            start_time = dt.datetime.now()
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         s3_key = f"{s3_prefix}container_cost/nops_cost/year={start_time.year}/month={start_time.month}/day={start_time.day}/cluster_name={cluster_name}/v{SCHEMA_VERSION_DATE}_k8s_nopscost-{derive_suffix_from_settings()}.parquet"
         return s3_key
@@ -251,8 +253,11 @@ class Command(BaseCommand):
         try:
             processed_data = main_command(window_start=window_start, window_end=window_end)
             path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, window_start, cluster_arn)}"
+
             if processed_data is not None and not processed_data.empty:
                 processed_data.to_parquet(path)
+            if not window_start:
+                window_start = dt.datetime.now()
             self.logger.info(
                 f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
             )
