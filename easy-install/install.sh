@@ -10,9 +10,7 @@ APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this o
 #######################################################################
 #######################################################################
 ################### OPTIONAL CUSTOM SETTINGS ##########################
-
 # Set these if you have a custom registry to pull images from
-
 USE_CUSTOM_REGISTRY=false # Change this to true, if necessary
 CUSTOM_REGISTRY="<REPLACE-YourCustomRegistry>" # Set here the url to your custom registry
 
