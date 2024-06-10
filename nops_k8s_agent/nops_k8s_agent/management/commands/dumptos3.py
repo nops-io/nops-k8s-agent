@@ -249,9 +249,7 @@ class Command(BaseCommand):
 
     def _make_nopscost_exporting_request(self, s3_bucket, s3_prefix, cluster_arn, window_start, window_end):
         try:
-            window_start_timestamp = int(window_start.timestamp())
-            window_end_timestamp = int(window_end.timestamp())
-            processed_data = main_command(window_start=window_start_timestamp, window_end=window_end_timestamp)
+            processed_data = main_command(window_start=window_start, window_end=window_end)
             path = f"s3://{s3_bucket}/{self._get_s3_key(s3_prefix, window_start, cluster_arn)}"
             if processed_data is not None and not processed_data.empty:
                 processed_data.to_parquet(path)
@@ -259,13 +257,10 @@ class Command(BaseCommand):
                 f"nops_cost export successful for {window_start.year}-{window_start.month}-{window_start.day}"
             )
         except Exception as e:
-            self.logger.info(f"apagar - excecao aqui: {e}")
             self.logger.debug(f"Error while exporting nopscost data: {e}")
             self.errors.append("nops_cost")
 
     def export_nopscost_data(self, s3, s3_bucket, s3_prefix, cluster_arn, start_time):
-        window_end = None
-        window_start = start_time
         try:
             backfill_date = self._should_backfill(s3, s3_bucket, s3_prefix, start_time, cluster_arn)
             if backfill_date:

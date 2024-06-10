@@ -56,12 +56,21 @@ def get_config(hostname=None, port=None, window_start=None, window_end=None, agg
         )
     if step is None:
         step = os.environ.get("NOPSCOST_STEP", "1h")
-
     config["url"] = f"http://{hostname}:{port}/allocation/compute"
     if window_start is None or window_end is None:
         yesterday = datetime.now() - timedelta(1)
         window_start = int(yesterday.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
         window_end = int(yesterday.replace(hour=23, minute=59, second=59, microsecond=0).timestamp())
+    else:
+        if isinstance(window_start, str) or isinstance(window_end, str):
+            timestamp_format = "%Y-%m-%dT%H:%M:%SZ"
+            window_start_timestamp = datetime.strptime(window_start, timestamp_format)
+            window_end_timestamp = datetime.strptime(window_end, timestamp_format)
+            window_start = window_start_timestamp.strftime(timestamp_format)
+            window_end = window_end_timestamp.strftime(timestamp_format)
+        else:
+            window_start = int(window_start.timestamp())
+            window_end = int(window_end.timestamp())
     window = f"{window_start},{window_end}"
     config["aggregate_by"] = aggregate_by
     config["params"] = (
