@@ -61,11 +61,15 @@ spec:
                     HOUR=0$HOUR
                   fi
                 fi &&
-                for pod in $(kubectl get pods -n nops-cost -o jsonpath='{.items[*].metadata.name}'); do 
-                  kubectl logs $pod -n nops-cost --since=1h | tee -a /tmp/nops-cost-logs.txt; 
+                NAMESPACE_COST="nops-cost" &&
+                NAMESPACE_PROMETHEUS="nops-prometheus-system" &&
+                CONTAINER_COST="nops-cost" &&
+                CONTAINER_PROMETHEUS="prometheus-server" &&
+                for pod in $(kubectl get pods -n $NAMESPACE_COST -o jsonpath='{.items[*].metadata.name}'); do 
+                  kubectl logs $pod -n $NAMESPACE_COST -c $CONTAINER_COST --since=1h | tee -a /tmp/nops-cost-logs.txt; 
                 done &&
-                for pod in $(kubectl get pods -n nops-prometheus-system -o jsonpath='{.items[*].metadata.name}'); do 
-                  kubectl logs $pod -n nops-prometheus-system --since=1h | tee -a /tmp/nops-prometheus-logs.txt; 
+                for pod in $(kubectl get pods -n $NAMESPACE_PROMETHEUS -o jsonpath='{.items[*].metadata.name}'); do 
+                  kubectl logs $pod -n $NAMESPACE_PROMETHEUS -c $CONTAINER_PROMETHEUS --since=1h | tee -a /tmp/nops-prometheus-logs.txt; 
                 done &&
                 echo "going to upload everything" &&
                 aws s3 cp /tmp/nops-cost-logs.txt s3://{{ .Values.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/nops-cost-logs.txt &&
