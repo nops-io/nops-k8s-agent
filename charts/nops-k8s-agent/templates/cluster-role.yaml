@@ -10,6 +10,7 @@ rules:
       - deployments
       - nodes
       - pods
+      - pods/log
       - services
       - resourcequotas
       - replicationcontrollers
