@@ -25,8 +25,9 @@ def test_get_metrics_success(base_labels_instance):
     with patch.object(
         base_labels_instance.prom_client, "custom_query_range", return_value=mock_response
     ) as mock_method:
+        query = base_labels_instance.build_query(metric_name, step)
         response = base_labels_instance.get_metrics(
-            start_time=start_time, end_time=end_time, metric_name=metric_name, step=step
+            query=query, start_time=start_time, end_time=end_time, metric_name=metric_name, step=step
         )
 
         mock_method.assert_called_once_with(
@@ -45,8 +46,9 @@ def test_get_metrics_exception(base_labels_instance):
     with patch.object(
         base_labels_instance.prom_client, "custom_query_range", side_effect=Exception("Test exception")
     ) as mock_method:
+        query = base_labels_instance.build_query(metric_name, step)
         response = base_labels_instance.get_metrics(
-            start_time=start_time, end_time=end_time, metric_name=metric_name, step=step
+            query=query, start_time=start_time, end_time=end_time, metric_name=metric_name, step=step
         )
 
         mock_method.assert_called_once_with(
@@ -61,7 +63,7 @@ def test_get_all_metrics_success(base_labels_instance):
     end_time = datetime.utcnow()
     step = "5m"
 
-    def mock_get_metrics(start_time, end_time, metric_name, step):
+    def mock_get_metrics(query, start_time, end_time, metric_name, step):
         # Generate a mock response for any metric name
         mock_value = 1
         return [{"metric": {"__name__": metric_name}, "values": [[1609459200.0, str(mock_value)]]}]
@@ -90,7 +92,7 @@ def test_get_all_metrics_partial_data(base_labels_instance):
     }
 
     # Adjust mock_get_metrics to return data for metrics in partial_response, None otherwise
-    def mock_get_metrics(start_time, end_time, metric_name, step):
+    def mock_get_metrics(query, start_time, end_time, metric_name, step):
         return partial_response.get(metric_name, None)  # Return None for metrics not in partial_response
 
     with patch.object(base_labels_instance, "get_metrics", side_effect=mock_get_metrics):

@@ -31,25 +31,8 @@ class BaseLabels(BaseProm):
     CUSTOM_COLUMN = None
     POP_OUT_COLUMN = {"node": [], "pod": [], "namespace": []}
 
-    def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
-        # This function to get metrics from prometheus
-
-        query = f"avg_over_time({metric_name}[{step}])"
-        try:
-            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
-            return response
-        except Exception as e:
-            logger.error(f"Error in get_metrics: {e}")
-            return None
-
-    def get_all_metrics(self, start_time: datetime, end_time: datetime, step: str) -> dict:
-        # This function to get all metrics from prometheus
-        metrics = defaultdict(list)
-        for metric_name in self.list_of_metrics.keys():
-            response = self.get_metrics(start_time=start_time, end_time=end_time, metric_name=metric_name, step=step)
-            if response:
-                metrics[metric_name] = response
-        return metrics
+    def build_query(self, metric_name: str, step: str) -> str:
+        return f"avg_over_time({metric_name}[{step}])"
 
     def pop_out_metric(self, metric: str, data: dict) -> str:
         return data.get("metric", {}).get(metric, "")

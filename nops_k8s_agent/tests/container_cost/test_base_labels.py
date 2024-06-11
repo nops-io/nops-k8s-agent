@@ -49,8 +49,8 @@ def test_valid_query(mock_logger, base_labels):
     expected_response = [{"metric": {"__name__": metric_name}, "value": [1234567890, "100"]}]
 
     base_labels.prom_client.custom_query_range.return_value = expected_response
-
-    response = base_labels.get_metrics(start_time, end_time, metric_name, step)
+    query = base_labels.build_query(metric_name, step)
+    response = base_labels.get_metrics(query, start_time, end_time, metric_name, step)
 
     base_labels.prom_client.custom_query_range.assert_called_once_with(
         f"avg_over_time({metric_name}[{step}])", start_time=start_time, end_time=end_time, step=step
@@ -59,7 +59,7 @@ def test_valid_query(mock_logger, base_labels):
     mock_logger.error.assert_not_called()
 
 
-@patch("nops_k8s_agent.container_cost.base_labels.logger")
+@patch("nops_k8s_agent.container_cost.base_prom.logger")
 def test_invalid_query_parameters(mock_logger, base_labels):
     base_labels.prom_client.custom_query_range.side_effect = Exception("Query failed")
 
@@ -67,8 +67,8 @@ def test_invalid_query_parameters(mock_logger, base_labels):
     start_time = datetime.now(pytz.utc)
     end_time = datetime.now(pytz.utc) - timedelta(hours=1)  # End time before start time
     step = "invalid"
-
-    response = base_labels.get_metrics(start_time, end_time, metric_name, step)
+    query = base_labels.build_query(metric_name, step)
+    response = base_labels.get_metrics(query, start_time, end_time, metric_name, step)
 
     assert response is None
     mock_logger.error.assert_called_once()
@@ -82,14 +82,15 @@ def test_exception_handling(base_labels):
     end_time = datetime.now(pytz.utc)
     step = "5m"
 
-    with patch("nops_k8s_agent.container_cost.base_labels.logger") as mock_logger:
-        response = base_labels.get_metrics(start_time, end_time, metric_name, step)
+    with patch("nops_k8s_agent.container_cost.base_prom.logger") as mock_logger:
+        query = base_labels.build_query(metric_name, step)
+        response = base_labels.get_metrics(query, start_time, end_time, metric_name, step)
         assert response is None
         mock_logger.error.assert_called_once_with("Error in get_metrics: Network error")
 
 
 def test_get_all_metrics_all_available(base_labels):
-    def mock_get_metrics(start_time, end_time, metric_name, step):
+    def mock_get_metrics(query, start_time, end_time, metric_name, step):
         mock_value = 1
         return [{"metric": {"__name__": metric_name}, "values": [[1609459200.0, str(mock_value)]]}]
 
@@ -111,7 +112,7 @@ def test_get_all_metrics_all_available(base_labels):
 
 
 def test_get_all_metrics_some_missing(base_labels):
-    def fake_response(start_time, end_time, metric_name, step):
+    def fake_response(query, start_time, end_time, metric_name, step):
         if metric_name == "kube_pod_labels":
             return None  # Simulate no data for this metric
         return [{"metric": {"__name__": metric_name}, "value": [1234567890, "100"]}]

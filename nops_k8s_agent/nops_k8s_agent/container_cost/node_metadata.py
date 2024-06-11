@@ -3,8 +3,6 @@ from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
 
 class NodeMetadata(BaseLabels):
-    # This class to get pod metrics from prometheus and put it in dictionary
-    # List of metrics:
     list_of_metrics = {
         "kube_node_info": [],
     }

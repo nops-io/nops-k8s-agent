@@ -4,8 +4,6 @@ from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
 class PodMetrics(BaseMetrics):
-    # This class to get pod metrics from prometheus and put it in dictionary
-    # List of metrics:
     list_of_metrics = {
         "kube_pod_owner": ["pod", "owner_name", "owner_kind", "namespace", "owner_is_controller", "uid"],
         # kube_pod_labels empty now
