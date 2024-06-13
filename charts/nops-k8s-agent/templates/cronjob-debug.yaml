@@ -72,8 +72,9 @@ spec:
                   kubectl logs $pod -n $NAMESPACE_PROMETHEUS -c $CONTAINER_PROMETHEUS --since=1h | tee -a /tmp/nops-prometheus-logs.txt; 
                 done &&
                 echo "going to upload everything" &&
-                aws s3 cp /tmp/nops-cost-logs.txt s3://{{ .Values.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/nops-cost-logs.txt &&
-                aws s3 cp /tmp/nops-prometheus-logs.txt s3://{{ .Values.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/nops-prometheus-logs.txt &&
+                ENCODED_CLUSTER_ARN=$(echo {{ .Values.env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN }} | sed -e 's|/|%2F|g') &&
+                aws s3 cp /tmp/nops-cost-logs.txt s3://{{ .Values.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/cluster_arn=${ENCODED_CLUSTER_ARN}/nops-cost-logs.txt &&
+                aws s3 cp /tmp/nops-prometheus-logs.txt s3://{{ .Values.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/cluster_arn=${ENCODED_CLUSTER_ARN}/nops-prometheus-logs.txt &&
                 rm /tmp/nops-prometheus-logs.txt &&
                 rm /tmp/nops-cost-logs.txt
           restartPolicy: Never
