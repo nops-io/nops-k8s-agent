@@ -26,11 +26,15 @@ class BaseMetrics(BaseProm):
         group_by_list = self.list_of_metrics.get(metric_name)
         group_by_str = ",".join(group_by_list)
 
+        # query = f"avg(avg_over_time({metric_name}[{step}])) by ({group_by_str})"
+
         query = f"{metric_name}[{step}]"
         try:
-            response = self.prom_client.custom_query_range(query, start_time=start_time, end_time=end_time, step=step)
+            response = self.prom_client.custom_query(query)
+            logger.info(f"{metric_name} response: {response}")
             return response
         except Exception as e:
+            logger.info(f"Error in get_metrics: {e}")
             logger.error(f"Error in get_metrics: {e}")
             return None
 
@@ -56,6 +60,7 @@ class BaseMetrics(BaseProm):
             start_time = current_time.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
             end_time = start_time + timedelta(days=1) - timedelta(seconds=1)
         all_metrics_data = self.get_all_metrics(start_time=start_time, end_time=end_time, step=step)
+        logger.info(f"all_metrics_data: {all_metrics_data}")
 
         # Prepare data structure for PyArrow
         # Initialize lists for each column
