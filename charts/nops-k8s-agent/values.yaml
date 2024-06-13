@@ -7,6 +7,8 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "deploy"
 
+debug: false
+
 service_account_role: ""
 
 ingress:

@@ -53,6 +53,8 @@ configmapReload:
   prometheus:
     ## If false, the configmap-reload container will not be deployed
     ##
+    prometheusSpec:
+      logLevel: debug
     enabled: true
 
     ## configmap-reload container name
@@ -275,7 +277,8 @@ server:
 
   ## Additional Prometheus server container arguments
   ##
-  extraArgs: {}
+  extraArgs:
+    log.level: debug
 
   ## Additional InitContainers to initialize the pod
   ##
@@ -774,7 +777,7 @@ serverFiles:
       - job_name: 'kube-state-metrics'
         static_configs:
           - targets: ['nops-prometheus-kube-state-metrics.nops-prometheus-system:8080']
-        
+
       # A scrape configuration for running Prometheus on a Kubernetes cluster.
       # This uses separate scrape configs for cluster components (i.e. API server, node)
       # and services to allow each to use different authentication configs.
