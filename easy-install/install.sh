@@ -149,8 +149,6 @@ if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
         # # Installing nops-cost
         helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
         --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
-        --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
-        --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
         --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
         --set loglevel=debug \
         --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
@@ -186,8 +184,6 @@ if [[ "$USE_CUSTOM_REGISTRY" == "true" ]]; then
         # # Installing nops-cost
         helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
             --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
-            --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
-            --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
             --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
             --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
             --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
@@ -217,8 +213,6 @@ else
         # # Installing nops-cost
         helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
         --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
-        --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
-        --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
         --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
         --set loglevel=debug \
         --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
@@ -243,8 +237,6 @@ else
         # # Installing nops-cost
         helm upgrade -i nops-cost --repo https://opencost.github.io/opencost-helm-chart opencost \
         --namespace nops-cost --create-namespace -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/nops-cost.yaml  \
-        --set prometheus.internal.serviceName=$PROMETHEUS_SERVICE \
-        --set prometheus.internal.namespaceName=$PROMETHEUS_NAMESPACE \
         --set prometheus.bearer_token=$NOPS_K8S_AGENT_PROM_TOKEN \
         --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
         --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
@@ -260,6 +252,7 @@ else
         --set env_variables.NOPS_K8S_AGENT_PROM_TOKEN=$NOPS_K8S_AGENT_PROM_TOKEN \
         --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
         --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX || { echo "Error: Failed to install k8s-agent"; exit 1; }
+    fi
 fi
 
 echo "All operations completed successfully."
