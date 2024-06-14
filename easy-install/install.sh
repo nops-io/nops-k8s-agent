@@ -27,6 +27,7 @@ APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
 APP_PROMETHEUS_SERVER_ENDPOINT="http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
 
 PROMETHEUS_CONFIG_URL="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus-ksm.yaml"
+PROMETHEUS_CONFIG_URL_DEBUG="https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/prometheus-ksm-debug.yaml"
 
 derive_iam_role_arn() {
     local eks_cluster_arn=$1
