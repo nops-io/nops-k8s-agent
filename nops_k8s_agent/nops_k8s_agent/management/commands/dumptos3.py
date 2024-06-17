@@ -20,6 +20,7 @@ from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import Persiste
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
+from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 
 
 class DualOutput:
@@ -82,6 +83,7 @@ class Command(BaseCommand):
         s3 = boto3.client("s3")
         s3_bucket = settings.AWS_S3_BUCKET
         s3_prefix = settings.AWS_S3_PREFIX
+        self.logger.info(f"Starting export to s3://{s3_bucket}/{s3_prefix}")
         cluster_arn = settings.NOPS_K8S_AGENT_CLUSTER_ARN
         module_to_collect = options["module_to_collect"]
         start_date_str = options["start_date"]
@@ -302,12 +304,12 @@ class Command(BaseCommand):
         }
         try:
             klass = collect_klass[klass_name]
-            instance = klass(cluster_arn=cluster_arn)
+            instance: BaseMetrics | BaseLabels = klass(cluster_arn=cluster_arn)
             FILE_PREFIX = klass.FILE_PREFIX
             path = f"{s3_prefix}container_cost/{FILE_PREFIX}/year={start_time.year}/month={start_time.month}/day={start_time.day}/hour={start_time.hour}/cluster_name={cluster_name}"
             tmp_file = f"{tmp_path}{klass.FILENAME}"
             instance.convert_to_table_and_save(
-                period="last_hour", current_time=start_time, step="5m", filename=tmp_file
+                period="last_hour", current_time=start_time, step="60m", filename=tmp_file
             )
             s3_key = f"{path}/{klass.FILENAME}"
             s3.upload_file(Filename=tmp_file, Bucket=s3_bucket, Key=s3_key)
