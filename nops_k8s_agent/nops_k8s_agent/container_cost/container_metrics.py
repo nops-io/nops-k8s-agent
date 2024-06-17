@@ -8,6 +8,7 @@ from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
+# as of June 17, 2024 -- unused
 class ContainerMetrics(BaseMetrics):
     # cAdvisor
     list_of_metrics = {
