@@ -72,11 +72,22 @@ current_context=$(kubectl config current-context)
 if [ "$current_context" != "$APP_NOPS_K8S_AGENT_CLUSTER_ARN" ]; then
     echo "Current context ($current_context) is not set to required ARN ($APP_NOPS_K8S_AGENT_CLUSTER_ARN). Attempting to switch..."
     if ! kubectl config use-context "$APP_NOPS_K8S_AGENT_CLUSTER_ARN"; then
-        echo "Error: Failed to switch to context $APP_NOPS_K8S_AGENT_CLUSTER_ARN. Please check your configuration."
-        exit 1
+        echo "Error: Failed to switch to context $APP_NOPS_K8S_AGENT_CLUSTER_ARN."
+        echo "Current context is $current_context. Is this correct? (y/n)"
+        read -r user_input
+        if [ "$user_input" != "y" ]; then
+            echo "Exiting script."
+            exit 1
+        else
+            echo "Proceeding installation on $current_context"
+        fi
+    else
+        echo "Switched context to $APP_NOPS_K8S_AGENT_CLUSTER_ARN successfully."
     fi
-    echo "Switched context to $APP_NOPS_K8S_AGENT_CLUSTER_ARN successfully."
+else
+    echo "Current context is already set to the required ARN."
 fi
+
 
 if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>"  ]]; then
   echo "Error: Cluster ARN variables must be set before running this script."
