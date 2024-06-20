@@ -4,9 +4,10 @@ kind: CronJob
 metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-high
 spec:
-  schedule: "{{ .Values.cronjob.schedule }}"
+  schedule: "2 * * * *"
   jobTemplate:
     spec:
+      backoffLimit: 0
       template:
         spec:
           activeDeadlineSeconds: {{ .Values.env_variables.APP_NOPS_K8S_AGENT_TIMEOUT }}
@@ -16,12 +17,20 @@ spec:
           serviceAccountName: default
           {{ end }}
           containers:
-          - name: {{ .Chart.Name }}
+          - resources:
+              limits:
+                cpu: {{ .Values.resources.limits.cpu }}
+                memory: {{ .Values.resources.limits.memory }}
+              requests:
+                cpu: {{ .Values.resources.requests.cpu }}
+                memory: {{ .Values.resources.requests.memory }}
+            name: {{ .Chart.Name }}
             env:
               - name: APP_APP_VERSION
                 value: "{{ .Chart.AppVersion }}"
               - name: APP_CHART_VERSION
                 value: "{{ .Chart.Version }}"
+              {{- if .Values.secrets.useAwsCredentials }}
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
@@ -32,6 +41,7 @@ spec:
                   secretKeyRef:
                     name: nops-k8s-agent
                     key: aws_secret_access_key
+              {{- end }}
             envFrom:
               - configMapRef:
                   name: {{ .Chart.Name }}-configmap

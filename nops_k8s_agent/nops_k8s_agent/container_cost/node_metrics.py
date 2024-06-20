@@ -1,4 +1,6 @@
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
 class NodeMetrics(BaseMetrics):
@@ -20,6 +22,7 @@ class NodeMetrics(BaseMetrics):
             "node",
             "unit",
         ],
+        "node_total_hourly_cost": ["instance_type", "node", "provider_id"],
     }
     FILE_PREFIX = "node_metrics"
-    FILENAME = "node_metrics_0.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metrics_0-{derive_suffix_from_settings()}.parquet"

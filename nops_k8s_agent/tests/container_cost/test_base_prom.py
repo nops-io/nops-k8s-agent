@@ -29,7 +29,9 @@ def test_initialization_without_authorization_token():
     ) as mock_prometheus_connect:
         BaseProm(cluster_arn="arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
         mock_prometheus_connect.assert_called_once_with(
-            url="http://prometheus-server.prometheus-system.svc.cluster.local:80", headers={}, disable_ssl=True
+            url="http://prometheus-server.prometheus-system.svc.cluster.local:80",
+            headers={},
+            disable_ssl=True,
         )
 
 
@@ -53,5 +55,7 @@ def test_prometheus_client_configuration():
     ) as mock_prometheus_connect:
         BaseProm(cluster_arn="arn:aws:eks:us-west-2:123456789012:cluster/my-cluster")
         mock_prometheus_connect.assert_called_once_with(
-            url="http://prometheus-server.prometheus-system.svc.cluster.local:80", headers={}, disable_ssl=True
+            url="http://prometheus-server.prometheus-system.svc.cluster.local:80",
+            headers={},
+            disable_ssl=True,
         )

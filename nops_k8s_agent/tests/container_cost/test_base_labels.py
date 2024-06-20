@@ -1,7 +1,9 @@
+import json
 from datetime import datetime
 from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
+
 
 import pytest
 import pytz
@@ -170,6 +172,16 @@ def test_convert_to_table_and_save_last_hour(base_labels, mock_os_makedirs, mock
     assert table.column("period").to_pylist()[0] == "last_hour"
 
 
+def test_convert_to_table_for_no_entries(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
+    base_labels.get_all_metrics = MagicMock(return_value={})
+
+    base_labels.convert_to_table_and_save("last_hour")
+
+    # Make sure no empty files will be created
+    mock_os_makedirs.assert_not_called()
+    mock_pq_write_table.assert_not_called()
+
+
 def test_convert_to_table_and_save_last_day(base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now):
     base_labels.get_all_metrics = MagicMock(
         return_value={"kube_namespace_labels": [{"metric": {"namespace": "default"}, "values": [[1234567890, "200"]]}]}
@@ -193,8 +205,10 @@ def test_convert_to_table_and_save_with_custom_columns(
     base_labels.CUSTOM_COLUMN = {"custom_metric": []}
     base_labels.CUSTOM_METRICS_FUNCTION = lambda data: "custom_value"
 
+    labels_dict = {"annotation": "annot1"}
+
     base_labels.get_all_metrics = MagicMock(
-        return_value={"kube_pod_annotations": [{"metric": {"annotation": "annot1"}, "values": [[1234567890, "300"]]}]}
+        return_value={"kube_pod_annotations": [{"metric": labels_dict, "values": [[1234567890, "300"]]}]}
     )
 
     base_labels.convert_to_table_and_save("last_hour")
@@ -204,5 +218,52 @@ def test_convert_to_table_and_save_with_custom_columns(
     args, kwargs = mock_pq_write_table.call_args
     table = args[0]
 
+    assert "labels" in table.column_names
+    assert type(table.column("labels")[0].as_py()) == str
+    assert json.loads(str(table.column("labels")[0])) == labels_dict
+    assert "custom_metric" in table.column_names
+    assert table.column("custom_metric").to_pylist()[0] == "custom_value"
+
+
+def test_convert_to_table_and_save_with_pop_out_columns(
+    base_labels, mock_os_makedirs, mock_pq_write_table, mock_datetime_now
+):
+    # Setup custom column and metrics function
+    base_labels.CUSTOM_COLUMN = {"custom_metric": []}
+    base_labels.CUSTOM_METRICS_FUNCTION = lambda data: "custom_value"
+
+    labels_dict = {"annotation": "annot1"}
+
+    base_labels.get_all_metrics = MagicMock(
+        return_value={
+            "kube_pod_annotations": [{"metric": labels_dict, "values": [[1234567890, "300"]]}],
+            "kube_pod_info": [
+                {
+                    "metric": {
+                        "pod": "pod_value",
+                        "namespace": "namespace_value",
+                        "node": "node_value",
+                        "some-other": "another",
+                    },
+                    "values": [[1234567890, "300"]],
+                }
+            ],
+        }
+    )
+    base_labels.convert_to_table_and_save("last_hour")
+
+    # Verify custom column was handled correctly
+    mock_pq_write_table.assert_called_once()
+    args, kwargs = mock_pq_write_table.call_args
+    table = args[0]
+
+    assert "labels" in table.column_names
+    assert "pod" in table.column_names
+    assert "namespace" in table.column_names
+    assert "node" in table.column_names
+    assert "some-other" not in table.column_names
+    assert type(table.column("labels")[0].as_py()) == str
+    assert json.loads(str(table.column("labels")[0])) == labels_dict
+    assert "some-other" in json.loads(str(table.column("labels")[1]))
     assert "custom_metric" in table.column_names
     assert table.column("custom_metric").to_pylist()[0] == "custom_value"

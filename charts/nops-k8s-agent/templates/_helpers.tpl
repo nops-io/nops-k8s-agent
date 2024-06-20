@@ -40,3 +40,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "nops-k8s-agent.validateEnvVariables" -}}
+{{- if not (hasSuffix "/" .Values.env_variables.APP_AWS_S3_PREFIX) }}
+{{- fail "APP_AWS_S3_PREFIX must end with a '/'." }}
+{{- end }}
+{{- end }}

@@ -11,13 +11,15 @@ import pytz
 from loguru import logger
 
 from nops_k8s_agent.container_cost.base_prom import BaseProm
+from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
+from nops_k8s_agent.utils import derive_suffix_from_settings
 
 
 class BaseMetrics(BaseProm):
     # This class to get pod metrics from prometheus and put it in dictionary
     # List of metrics:
     list_of_metrics = {}
-    FILENAME = "base_metrics.parquet"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_base_metrics-{derive_suffix_from_settings()}.parquet"
 
     def get_metrics(self, start_time: datetime, end_time: datetime, metric_name: str, step: str) -> Any:
         # This function to get metrics from prometheus
@@ -116,10 +118,7 @@ class BaseMetrics(BaseProm):
 
         # Create a PyArrow Table
         table = pa.Table.from_pydict(arrays)
-        directory = os.path.dirname(filename)
-
-        # Ensure the directory exists
-        os.makedirs(directory, exist_ok=True)
-
-        # Write the table to a Parquet file
-        pq.write_table(table, filename)
+        if table.num_rows > 0:
+            directory = os.path.dirname(filename)
+            os.makedirs(directory, exist_ok=True)
+            pq.write_table(table, filename)
