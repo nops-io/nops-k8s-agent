@@ -209,10 +209,8 @@ main() {
     kubectl config set-context --current --namespace=nops-k8s-agent || { log "Error: Failed to set kubectl context to nops-k8s-agent namespace"; exit 1; }
 
     if [[ "$DEBUG_MODE" == "true" ]]; then
-        log "INSTALLING WITH DEBUG LEVEL"
         install_prometheus $PROMETHEUS_CONFIG_URL_DEBUG
     else
-        log "INSTALLING WITHOUT DEBUG"
         install_prometheus $PROMETHEUS_CONFIG_URL
     fi
 
