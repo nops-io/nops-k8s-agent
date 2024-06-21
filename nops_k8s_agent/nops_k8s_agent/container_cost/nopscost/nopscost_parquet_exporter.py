@@ -71,8 +71,7 @@ def get_config(hostname=None, port=None, window_start=None, window_end=None, agg
         else:
             window_start = int(window_start.timestamp())
             window_end = int(window_end.timestamp())
-    # window = f"{window_start},{window_end}"
-    window = "1h"
+    window = f"{window_start},{window_end}"
     config["aggregate_by"] = aggregate_by
     config["params"] = (
         ("window", window),

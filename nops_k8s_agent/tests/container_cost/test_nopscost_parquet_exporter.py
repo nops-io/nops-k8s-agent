@@ -108,8 +108,7 @@ def test_get_config_defaults():
     config = get_config()
     assert config["url"] == "http://nops-cost.nops-cost.svc.cluster.local:9003/allocation/compute"
     assert config["aggregate_by"] == aggregations
-    # assert config["params"][0][1] == f"{expected_window_start},{expected_window_end}"
-    assert config["params"][0][1] == "1h"#f"{expected_window_start},{expected_window_end}"
+    assert config["params"][0][1] == f"{expected_window_start},{expected_window_end}"
 
 
 @patch.dict(
@@ -147,8 +146,7 @@ def test_get_config_with_arguments():
     )
     assert config["url"] == "http://arghost:8080/allocation/compute"
     assert config["aggregate_by"] == "namespace,deployment"
-    # assert config["params"][0][1] == "2023-02-01T00:00:00Z,2023-02-01T23:59:59Z"
-    assert config["params"][0][1] == "1h"#"2023-02-01T00:00:00Z,2023-02-01T23:59:59Z"
+    assert config["params"][0][1] == "2023-02-01T00:00:00Z,2023-02-01T23:59:59Z"
 
     assert config["params"][6] == ("step", "15m")
 
