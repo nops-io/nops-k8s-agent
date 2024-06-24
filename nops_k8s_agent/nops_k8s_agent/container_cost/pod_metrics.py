@@ -1,3 +1,7 @@
+from typing import Any
+
+from loguru import logger
+
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
@@ -31,3 +35,26 @@ class PodMetrics(BaseMetrics):
     }
     FILE_PREFIX = "pod_metrics"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_0-{derive_suffix_from_settings()}.parquet"
+
+
+class PodMetricsGranular(BaseMetrics):
+    list_of_metrics = {
+        "kube_pod_container_resource_limits": [],
+        "kube_pod_container_resource_requests": [],
+        "kube_pod_container_resource_requests_cpu_cores": [],
+        "kube_pod_container_resource_limits_cpu_cores": [],
+        "kube_pod_container_resource_limits_memory_bytes": [],
+        "kube_pod_container_resource_requests_memory_bytes": [],
+    }
+    FILE_PREFIX = "pod_metrics_granular"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_granular_0-{derive_suffix_from_settings()}.parquet"
+
+    def get_metrics(self, metric_name: str, **kwargs) -> Any:
+        query = f"{metric_name}[60m]"
+        try:
+            response = self.prom_client.custom_query(query)
+            logger.info(f"{metric_name} response: {response}")
+            return response
+        except Exception as e:
+            logger.error(f"Error in get_metrics: {e}")
+            return None
