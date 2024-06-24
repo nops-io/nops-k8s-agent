@@ -1,3 +1,7 @@
+from typing import Any
+
+from loguru import logger
+
 from nops_k8s_agent.container_cost.base_metrics import BaseMetrics
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
@@ -26,3 +30,22 @@ class NodeMetrics(BaseMetrics):
     }
     FILE_PREFIX = "node_metrics"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metrics_0-{derive_suffix_from_settings()}.parquet"
+
+
+class NodeMetricsGranular(BaseMetrics):
+    list_of_metrics = {
+        "kube_node_info": [],
+        "kube_node_status_allocatable_cpu_cores": [],
+    }
+    FILE_PREFIX = "node_metrics_granular"
+    FILENAME = f"v{SCHEMA_VERSION_DATE}_node_metrics_granular_0-{derive_suffix_from_settings()}.parquet"
+
+    def get_metrics(self, metric_name: str, **kwargs) -> Any:
+        query = f"{metric_name}[60m]"
+        try:
+            response = self.prom_client.custom_query(query)
+            logger.info(f"{metric_name} response: {response}")
+            return response
+        except Exception as e:
+            logger.error(f"Error in get_metrics: {e}")
+            return None
