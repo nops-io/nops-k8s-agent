@@ -4,7 +4,7 @@ kind: CronJob
 metadata:
   name: {{ template "nops-k8s-agent.fullname" . }}-debug-log-exporter
 spec:
-  schedule: "30 * * * *"
+  schedule: "45 * * * *"
   jobTemplate:
     spec:
       backoffLimit: 0
