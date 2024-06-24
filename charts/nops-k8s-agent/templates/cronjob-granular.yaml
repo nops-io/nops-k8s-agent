@@ -1,4 +1,4 @@
-{{ if .Values.debug }} 
+{{ if ne .Values.env_variables.APP_ENV "ci" }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
