@@ -1,4 +1,4 @@
-{{ if ne .Values.env_variables.APP_ENV "ci" }}
+{{- if .Values.rightsizing }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:

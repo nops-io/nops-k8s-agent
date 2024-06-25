@@ -43,6 +43,7 @@ PROMETHEUS_CONFIG_URL_DEBUG="https://raw.githubusercontent.com/nops-io/nops-k8s-
 # Initialize variables
 IPV_TYPE_RECORD="A"
 DEBUG_MODE="false"
+RIGHTSIZING="false"
 
 # Validate configuration
 validate_config() {
@@ -63,6 +64,7 @@ process_arguments() {
         case $arg in
             --ipv6) IPV_TYPE_RECORD="AAAA"; shift ;;
             --debug|--DEBUG) DEBUG_MODE="true"; shift ;;
+            --rightsizing) RIGHTSIZING="true"; shift ;;
             --custom-registry)
                 USE_CUSTOM_REGISTRY=true
                 shift
@@ -173,6 +175,7 @@ install_k8s_agent() {
         --set env_variables.APP_AWS_S3_BUCKET=$APP_AWS_S3_BUCKET \
         --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX \
         $( [[ "$DEBUG_MODE" == "true" ]] && echo "--set debug=true" ) \
+        $( [[ "$RIGHTSIZING" == "true" ]] && echo "--set rightsizing=true" ) \
         $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set image.repository=$CUSTOM_REGISTRY/nops-io/nops-k8s-agent" ) \
         || { log "Error: Failed to install k8s-agent"; exit 1; }
 }
