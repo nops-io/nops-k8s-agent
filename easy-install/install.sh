@@ -8,7 +8,7 @@ set -e
 
 ####################  REPLACE CLUSTER ARN #############################
 
-APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusterARN>a" # You can find this on your EKS dashboard on AWS
+APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusterARN>" # You can find this on your EKS dashboard on AWS
 
 ####################  OPTIONAL: SET USER SECRET ######################
 
