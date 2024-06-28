@@ -4,7 +4,7 @@
 # --ipv6 if your cluster is setup with ipv6
 # --custom-registry if you want to use your custom registry for container images (This will prompt your registry URL)
 # Exit script on error
-set -e
+set +e
 
 ####################  REPLACE CLUSTER ARN #############################
 
@@ -53,8 +53,8 @@ validate_config() {
         exit 1
     fi
     if [[ "$USE_CUSTOM_REGISTRY" == "true" && ( "$QUAY_CUSTOM_REGISTRY" == "<REPLACE-YourCustomRegistry>" || "$GITHUB_CUSTOM_REGISTRY" == "<REPLACE-YourCustomRegistry>" || -z "$QUAY_CUSTOM_REGISTRY" || -z "$GITHUB_CUSTOM_REGISTRY" ) ]]; then
-        echo "ghcr.io custom registry: $GITHUB_CUSTOM_REGISTRY"
-        echo "Quay.io custom registry: $QUAY_CUSTOM_REGISTRY"
+        log "ghcr.io custom registry: $GITHUB_CUSTOM_REGISTRY"
+        log "Quay.io custom registry: $QUAY_CUSTOM_REGISTRY"
         log "Error: Set your custom registry URL."
         exit 1
     fi
@@ -122,6 +122,28 @@ switch_kubectl_context() {
     fi
 }
 
+install_gpu_metric_exporters() {
+    # Check if the CRD exists
+    kubectl get crd servicemonitors.monitoring.coreos.com > /dev/null 2>&1
+    exit_code=$?
+    # Based on the exit code, decide what to do
+    if [ $exit_code -eq 0 ]; then
+        log "The CRD servicemonitors exists."
+    else
+        log "The CRD servicemonitors does not exist. Installing via Helm."
+        helm upgrade -i nops-prometheus-crds --namespace nops-prometheus-system --repo https://prometheus-community.github.io/helm-charts prometheus-operator-crds 
+        helm_exit_code=$?
+        if [ $helm_exit_code -eq 0 ]; then
+            log "Installed nops-prometheus-crds."
+        else
+            log "Helm upgrade failed with exit code $helm_exit_code."
+            exit 1;
+        fi
+    fi
+
+
+    helm upgrade -i nops-gpu-metrics-exporter --repo https://nvidia.github.io/dcgm-exporter/helm-charts dcgm-exporter -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/dcgm-exporter.yaml 
+}
 # Create namespace
 create_namespace() {
     local namespace=$1
@@ -219,7 +241,7 @@ main() {
     else
         install_prometheus $PROMETHEUS_CONFIG_URL
     fi
-
+    install_gpu_metric_exporters
     install_nops_cost
     install_k8s_agent
 
