@@ -44,7 +44,7 @@ PROMETHEUS_CONFIG_URL_DEBUG="https://raw.githubusercontent.com/nops-io/nops-k8s-
 # Initialize variables
 IPV_TYPE_RECORD="A"
 DEBUG_MODE="false"
-RIGHTSIZING="false"
+RIGHTSIZING="true"
 
 # Validate configuration
 validate_config() {
@@ -66,7 +66,7 @@ process_arguments() {
         case $arg in
             --ipv6) IPV_TYPE_RECORD="AAAA"; shift ;;
             --debug|--DEBUG) DEBUG_MODE="true"; shift ;;
-            --rightsizing) RIGHTSIZING="true"; shift ;;
+            --no-rightsizing) RIGHTSIZING="false"; shift ;;
             --custom-registry)
                 USE_CUSTOM_REGISTRY=true
                 shift
