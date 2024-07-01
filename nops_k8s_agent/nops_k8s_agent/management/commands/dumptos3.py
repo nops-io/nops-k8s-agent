@@ -349,12 +349,12 @@ class Command(BaseCommand):
     def yield_all_klass(self):
         collect_klass = [
             "base_labels",
-            "deployment_metrics",
+            # "deployment_metrics",
             "job_metrics",
             "node_metrics",
-            "pv_metrics",
-            "pvc_metrics",
-            "pod_metrics",
+            # "pv_metrics",
+            # "pvc_metrics",
+            # "pod_metrics",
             "node_metadata",
         ]
         for klass in collect_klass:
