@@ -4,11 +4,11 @@
 # --ipv6 if your cluster is setup with ipv6
 # --custom-registry if you want to use your custom registry for container images (This will prompt your registry URL)
 # Exit script on error
-set -e
+set +e
 
 ####################  REPLACE CLUSTER ARN #############################
 
-APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusternARN>" # You can find this on your EKS dashboard on AWS
+APP_NOPS_K8S_AGENT_CLUSTER_ARN="<REPLACE-YourClusterARN>" # You can find this on your EKS dashboard on AWS
 
 ####################  OPTIONAL: SET USER SECRET ######################
 
@@ -32,7 +32,8 @@ trap 'log "An error occurred. Exiting..."; exit 1' ERR
 
 
 USE_CUSTOM_REGISTRY=false
-CUSTOM_REGISTRY="<REPLACE-YourCustomRegistry>"
+QUAY_CUSTOM_REGISTRY="<REPLACE-YourCustomRegistry>"
+GITHUB_CUSTOM_REGISTRY="<REPLACE-YourCustomRegistry>"
 APP_AWS_S3_BUCKET="<REPLACE-YourS3Bucket>"
 APP_AWS_S3_PREFIX="<REPLACE-YourS3Prefix>"
 APP_PROMETHEUS_SERVER_ENDPOINT="http://nops-prometheus-server.nops-prometheus-system.svc.cluster.local:80"
@@ -43,17 +44,18 @@ PROMETHEUS_CONFIG_URL_DEBUG="https://raw.githubusercontent.com/nops-io/nops-k8s-
 # Initialize variables
 IPV_TYPE_RECORD="A"
 DEBUG_MODE="false"
-RIGHTSIZING="false"
+RIGHTSIZING="true"
 
 # Validate configuration
 validate_config() {
-    if [[ "$USE_CUSTOM_REGISTRY" == "true" && ($CUSTOM_REGISTRY == "<REPLACE-YourCustomRegistry>" || -z $CUSTOM_REGISTRY) ]]; then
-        log "Error: Set your custom registry URL."
+    if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusterARN>" ]]; then
+        log "Error: Cluster ARN variables must be set before running this script."
         exit 1
     fi
-
-    if [[ $APP_NOPS_K8S_AGENT_CLUSTER_ARN == "<REPLACE-YourClusternARN>" ]]; then
-        log "Error: Cluster ARN variables must be set before running this script."
+    if [[ "$USE_CUSTOM_REGISTRY" == "true" && ( "$QUAY_CUSTOM_REGISTRY" == "<REPLACE-YourCustomRegistry>" || "$GITHUB_CUSTOM_REGISTRY" == "<REPLACE-YourCustomRegistry>" || -z "$QUAY_CUSTOM_REGISTRY" || -z "$GITHUB_CUSTOM_REGISTRY" ) ]]; then
+        log "ghcr.io custom registry: $GITHUB_CUSTOM_REGISTRY"
+        log "Quay.io custom registry: $QUAY_CUSTOM_REGISTRY"
+        log "Error: Set your custom registry URL."
         exit 1
     fi
 }
@@ -64,11 +66,12 @@ process_arguments() {
         case $arg in
             --ipv6) IPV_TYPE_RECORD="AAAA"; shift ;;
             --debug|--DEBUG) DEBUG_MODE="true"; shift ;;
-            --rightsizing) RIGHTSIZING="true"; shift ;;
+            --no-rightsizing) RIGHTSIZING="false"; shift ;;
             --custom-registry)
                 USE_CUSTOM_REGISTRY=true
                 shift
-                read -p "Enter the custom registry URL: " CUSTOM_REGISTRY
+                read -p "Enter the custom ghcr.io registry URL: " GITHUB_CUSTOM_REGISTRY
+                read -p "Enter the custom Quay.io registry URL: " QUAY_CUSTOM_REGISTRY
                 ;;
         esac
     done
@@ -119,6 +122,28 @@ switch_kubectl_context() {
     fi
 }
 
+install_gpu_metric_exporters() {
+    # Check if the CRD exists
+    kubectl get crd servicemonitors.monitoring.coreos.com > /dev/null 2>&1
+    exit_code=$?
+    # Based on the exit code, decide what to do
+    if [ $exit_code -eq 0 ]; then
+        log "The CRD servicemonitors exists."
+    else
+        log "The CRD servicemonitors does not exist. Installing via Helm."
+        helm upgrade -i nops-prometheus-crds --namespace nops-prometheus-system --repo https://prometheus-community.github.io/helm-charts prometheus-operator-crds 
+        helm_exit_code=$?
+        if [ $helm_exit_code -eq 0 ]; then
+            log "Installed nops-prometheus-crds."
+        else
+            log "Helm upgrade failed with exit code $helm_exit_code."
+            exit 1;
+        fi
+    fi
+
+
+    helm upgrade -i nops-gpu-metrics-exporter --repo https://nvidia.github.io/dcgm-exporter/helm-charts dcgm-exporter -f https://raw.githubusercontent.com/nops-io/nops-k8s-agent/master/easy-install/dcgm-exporter.yaml 
+}
 # Create namespace
 create_namespace() {
     local namespace=$1
@@ -141,11 +166,11 @@ install_prometheus() {
     - nops-cost.nops-cost.svc.cluster.local
     type: "'"${IPV_TYPE_RECORD}"'"
     port: 9003' \
-        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set server.image.repository=$CUSTOM_REGISTRY/prometheus/prometheus \
-        --set configmapReload.prometheus.image.repository=$CUSTOM_REGISTRY/prometheus-operator/prometheus-config-reloader \
-        --set kube-state-metrics.image.registry=$CUSTOM_REGISTRY \
+        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set server.image.repository=$QUAY_CUSTOM_REGISTRY/prometheus/prometheus \
+        --set configmapReload.prometheus.image.repository=$QUAY_CUSTOM_REGISTRY/prometheus-operator/prometheus-config-reloader \
+        --set kube-state-metrics.image.registry=$QUAY_CUSTOM_REGISTRY \
         --set kube-state-metrics.image.repository=kube-state-metrics/kube-state-metrics \
-        --set prometheus-node-exporter.image.registry=$CUSTOM_REGISTRY \
+        --set prometheus-node-exporter.image.registry=$QUAY_CUSTOM_REGISTRY \
         --set prometheus-node-exporter.image.repository=prometheus/node-exporter" ) \
         || { log "Error: Failed to install Prometheus"; exit 1; }
 }
@@ -158,7 +183,7 @@ install_nops_cost() {
         --set networkPolicies.prometheus.namespace=$PROMETHEUS_NAMESPACE \
         --set opencost.exporter.env[0].value=$APP_PROMETHEUS_SERVER_ENDPOINT \
         --set opencost.exporter.env[0].name=PROMETHEUS_SERVER_ENDPOINT \
-        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set opencost.exporter.image.registry=$CUSTOM_REGISTRY --set opencost.exporter.image.repository=opencost/opencost" ) \
+        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set opencost.exporter.image.registry=$GITHUB_CUSTOM_REGISTRY --set opencost.exporter.image.repository=opencost/opencost" ) \
         $( [[ "$DEBUG_MODE" == "true" ]] && echo "--set loglevel=debug" ) \
         || { log "Error: Failed to install nops-cost"; exit 1; }
 }
@@ -176,19 +201,19 @@ install_k8s_agent() {
         --set env_variables.APP_AWS_S3_PREFIX=$APP_AWS_S3_PREFIX \
         $( [[ "$DEBUG_MODE" == "true" ]] && echo "--set debug=true" ) \
         $( [[ "$RIGHTSIZING" == "true" ]] && echo "--set rightsizing=true" ) \
-        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set image.repository=$CUSTOM_REGISTRY/nops-io/nops-k8s-agent" ) \
+        $( [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && echo "--set image.repository=$GITHUB_CUSTOM_REGISTRY/nops-io/nops-k8s-agent" ) \
         || { log "Error: Failed to install k8s-agent"; exit 1; }
 }
 
 # Main script
 main() {
-    validate_config
     process_arguments "$@"
+    validate_config
     log "Selected configuration for agent and cluster"
     log "Type record: $( [[ "$IPV_TYPE_RECORD" == "A" ]] && echo "IPV4" || echo "IPV6" )"
     [[ "$DEBUG_MODE" == "true" ]] && log "Debug mode: ENABLED"
-    [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && log "Custom registry: $CUSTOM_REGISTRY" || log "Using public repositories"
-
+    [[ "$USE_CUSTOM_REGISTRY" == "true" ]] && log "Custom registry: $GITHUB_CUSTOM_REGISTRY and $QUAY_CUSTOM_REGISTRY" || log "Using public repositories"
+    
     SERVICE_ACCOUNT_ROLE=$(derive_iam_role_arn "$APP_NOPS_K8S_AGENT_CLUSTER_ARN")
     log "Using service account role: $SERVICE_ACCOUNT_ROLE"
 
@@ -216,7 +241,7 @@ main() {
     else
         install_prometheus $PROMETHEUS_CONFIG_URL
     fi
-
+    install_gpu_metric_exporters
     install_nops_cost
     install_k8s_agent
 
