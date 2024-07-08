@@ -9,15 +9,17 @@ from django.core.management.base import BaseCommand
 import boto3
 
 from nops_k8s_agent.container_cost.base_labels import BaseLabels
-from nops_k8s_agent.container_cost.container_metrics import ContainerMetrics
+from nops_k8s_agent.container_cost.container_metrics import ContainerMetricsGranular
 from nops_k8s_agent.container_cost.deployment_metrics import DeploymentMetrics
 from nops_k8s_agent.container_cost.job_metrics import JobMetrics
 from nops_k8s_agent.container_cost.node_metadata import NodeMetadata
 from nops_k8s_agent.container_cost.node_metrics import NodeMetrics
+from nops_k8s_agent.container_cost.node_metrics import NodeMetricsGranular
 from nops_k8s_agent.container_cost.nopscost.nopscost_parquet_exporter import main_command
 from nops_k8s_agent.container_cost.persistentvolume_metrics import PersistentvolumeMetrics
 from nops_k8s_agent.container_cost.persistentvolumeclaim_metrics import PersistentvolumeclaimMetrics
 from nops_k8s_agent.container_cost.pod_metrics import PodMetrics
+from nops_k8s_agent.container_cost.pod_metrics import PodMetricsGranular
 from nops_k8s_agent.settings import SCHEMA_VERSION_DATE
 from nops_k8s_agent.utils import derive_suffix_from_settings
 
@@ -86,6 +88,7 @@ class Command(BaseCommand):
         module_to_collect = options["module_to_collect"]
         start_date_str = options["start_date"]
         end_date_str = options["end_date"]
+        nogroupby = options["nogroupby"]
         retry = options.get("retry", False)
         modules_to_retry = options.get("modules_to_retry", [])
         now = dt.datetime.now()
@@ -96,6 +99,16 @@ class Command(BaseCommand):
             if modules_to_retry:
                 self.logger.info(f"Retrying for {modules_to_retry}")
             try:
+                if nogroupby:
+                    module_to_collect = [
+                        "container_metrics_granular",
+                        "pod_metrics_granular",
+                        "node_metrics_granular",
+                    ]
+                    return self.process_current_data(
+                        s3, s3_bucket, s3_prefix, cluster_arn, module_to_collect, now, modules_to_retry
+                    )
+
                 if start_date_str and end_date_str:
                     self.process_date_range(
                         s3,
@@ -209,6 +222,7 @@ class Command(BaseCommand):
         parser.add_argument("--module-to-collect", type=str, help="Name of the metric module to collect")
         parser.add_argument("--start-date", type=str, help="Start date in YYYY-MM-DD format")
         parser.add_argument("--end-date", type=str, help="End date in YYYY-MM-DD format")
+        parser.add_argument("--nogroupby", default=False, action="store_true", help="No groupby for metrics")
 
     def _get_s3_key(self, s3_prefix, start_time, cluster_arn):
         if not start_time:
@@ -291,7 +305,6 @@ class Command(BaseCommand):
         cluster_name = cluster_arn.split("/")[-1] if cluster_arn else "unknown_cluster"
         collect_klass = {
             "base_labels": BaseLabels,
-            "container_metrics": ContainerMetrics,
             "deployment_metrics": DeploymentMetrics,
             "job_metrics": JobMetrics,
             "node_metrics": NodeMetrics,
@@ -299,6 +312,9 @@ class Command(BaseCommand):
             "pvc_metrics": PersistentvolumeclaimMetrics,
             "pod_metrics": PodMetrics,
             "node_metadata": NodeMetadata,
+            "container_metrics_granular": ContainerMetricsGranular,
+            "pod_metrics_granular": PodMetricsGranular,
+            "node_metrics_granular": NodeMetricsGranular,
         }
         try:
             klass = collect_klass[klass_name]
@@ -333,7 +349,6 @@ class Command(BaseCommand):
     def yield_all_klass(self):
         collect_klass = [
             "base_labels",
-            "container_metrics",
             "deployment_metrics",
             "job_metrics",
             "node_metrics",

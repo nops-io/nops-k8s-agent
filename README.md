@@ -1,18 +1,14 @@
 # Table of Contents
 
 - [Introduction to nOps Kubernetes Agent](#introduction-to-nops-kubernetes-agent)
+- [nOps Integration](#nops-integration)
 - [Development Requirements](#development-requirements)
   * [Tilt](https://tilt.dev)
   * [Helm](https://helm.sh/)
   * [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/)
   * [k3d (for development)](https://k3d.io/v5.1.0/)
   * [make](#make)
-- [Easy Install](#easy-install)
 - [Development Setup](#development-setup)
-- [Agent Deployment](#agent-deployment)
-  * [Option 1: Deploy Agent From Source Code](#deploy-agent-from-source-code)
-  * [Option 2: Deploy Agent via Helm Repo (recommended)](#deploy-agent-via-helm-repo)
-- [Configure nOps Integration](#configure-nops-integration)
 
 # Introduction to nOps Kubernetes Agent
 
@@ -20,6 +16,8 @@ The **nOps Kubernetes Agent** (nops-k8s-agent) is essential for **optimizing clo
 
 * **Collect metadata** from Kubernetes clusters.
 * **Securely transfer** this data to an Amazon S3 bucket.
+* **Support IPv6 clusters**, ensuring compatibility with modern network configurations.
+* **Collect NVIDIA GPU metrics**, enabling comprehensive monitoring and optimization for GPU-accelerated workloads.
 
 This enables the nOps platform to:
  * **Analyze** the collected data.
@@ -29,34 +27,8 @@ This document guides you through the setup and deployment process, ensuring a sm
 
 ## nOps Integration 
 
+Check our <a href="https://help.nops.io/Configure-nOps-Kubernetes-Agent-on-EKS.html">help page</a> to walk you through the integration.
 
-1. Go to your Container Cost in Integration Settings on nOps
-2. Click Setup for the account of the cluster - make sure to be logged in to that account in AWS
-  a. Go through the CloudFormation stack creation on AWS
-3. Click on Check Status to confirm the permissions were properly granted
-4. Click on Generate Script
-  a. Replace the following variables in the script:
-    - AWS_ACCESS_KEY_ID # This is provided on the CloudFormation created
-    - AWS_SECRET_ACCESS_KEY # This is provided on the CloudFormation created
-    - APP_NOPS_K8S_AGENT_CLUSTER_ARN # This is provided in EKS dashboard
-    - APP_PROMETHEUS_SERVER_ENDPOINT # example: http://prometheus-server.prometheus-system.svc.cluster.local
-    - NOPS_K8S_AGENT_PROM_TOKEN # Add your Prometheus bearer token, if neccessary
-5. Save and execute this script
-
-
-**Make sure you have helm and kubectl installed and you are pointing to the correct cluster.**
-
-- Download and extract easy-install.zip
-- Use cf-bucket-access-key.yaml CloudFormation template to create a S3 bucket and a User for the agent
-- Replace the values on install.sh script for:
-  - AWS_ACCESS_KEY_ID
-  - AWS_SECRET_ACCESS_KEY
-  - APP_NOPS_K8S_AGENT_CLUSTER_ARN
-  - APP_AWS_S3_BUCKET
-  - APP_AWS_S3_PREFIX
-- Run the install.sh script
-  - if succesful, you should see "Proceed to nOps Dashboard and finish the integration."
-- Go to nOps Dashboard integration Container Cost and setup the bucket 
 ---
 
 ## Development Requirements
@@ -104,84 +76,3 @@ Follow these steps to set up your development environment for the nOps Kubernete
    - Look for pods related to the nOps Kubernetes Agent and confirm they are in the `Running` state.
 
 By following these steps, you'll have a development environment set up for the nOps Kubernetes Agent. This environment will allow you to develop, test, and iterate on the agent within a local Kubernetes cluster.
-
----
-
-### Configure values.yaml
-
-There are required variables:
-
-- APP_NOPS_K8S_AGENT_CLUSTER_ARN - needs to match with your cluster arn (starting with arn ending with cluster name)
-- APP_AWS_S3_BUCKET - S3 Bucket that this service has write permission
-- APP_AWS_S3_PREFIX - S3 Prefix path include trailing slash
-
-
-Example configuration
-```
-APP_NOPS_K8S_AGENT_CLUSTER_ARN: "arn:aws:eks:us-west-2:12345679012:cluster/nOps-Testing-EKS"
-APP_AWS_S3_BUCKET: "container-cost-export-customer-abc"
-APP_AWS_S3_PREFIX: "test-container-cost/"
-```
-
----
-
-## Agent Deployment
-
-There are 2 options for deployment
-
-### Option 1: Deploy Agent via Helm Repo (recommended)
-
-Linux:
-```shell
-    helm \
-      install nops-k8s-agent --repo  https://nops-io.github.io/nops-k8s-agent \
-      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
-```
-Windows PowerShell:
-```shell
-    helm `
-      install nops-k8s-agent --repo https://nops-io.github.io/nops-k8s-agent `
-      nops-k8s-agent --namespace nops-k8s-agent -f ./charts/nops-k8s-agent/values.yaml
-
-```
-
-
-### Option 2: Deploy Agent From Source Code
-
-Using helm chart for deployment from a cloned repository.
-  Linux:
-  ```shell
-    helm \
-      upgrade -i nops-k8s-agent ./charts/nops-k8s-agent \
-      -f ./charts/nops-k8s-agent/values.yaml \
-      --namespace nops-k8s-agent \
-      --set image.repository=ghcr.io/nops-io/nops-k8s-agent \
-      --set image.tag=deploy \
-      --set env_variables.APP_ENV=live \
-      --wait --timeout=300s
-```
-
-  Windows PowerShell:
-  ```shell
-    helm upgrade -i nops-k8s-agent .\charts\nops-k8s-agent `
-    -f .\charts\nops-k8s-agent\values.yaml `
-    --namespace nops-k8s-agent `
-    --set image.repository=ghcr.io/nops-io/nops-k8s-agent `
-    --set image.tag=deploy `
-    --set env_variables.APP_ENV=live `
-    --wait --timeout=300s
-```
-
-
-
-
-## Configure nOps Integration
-
-
-* Log into your nOps account.
-* Go to Settings -> Integrations -> Container Cost.
-* Configure your S3 bucket and permissions.
-
-Configure the S3 bucket for that account. If you have multiple EKS clusters please use the same bucket.
-Configure the read permission on the bucket for the IAM Role that we used on previous setup. Or click to install new Cloudformation Stack to provide the permission automatically.
-
