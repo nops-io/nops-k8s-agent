@@ -147,6 +147,7 @@ def test_get_config_with_arguments():
     assert config["url"] == "http://arghost:8080/allocation/compute"
     assert config["aggregate_by"] == "namespace,deployment"
     assert config["params"][0][1] == "2023-02-01T00:00:00Z,2023-02-01T23:59:59Z"
+
     assert config["params"][6] == ("step", "15m")
 
 
