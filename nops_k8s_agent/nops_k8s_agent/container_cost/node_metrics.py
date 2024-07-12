@@ -35,6 +35,9 @@ class NodeMetrics(BaseMetrics):
 class NodeMetricsGranular(BaseMetrics):
     list_of_metrics = {
         "kube_node_info": [],
+        "kube_node_status_condition": [],
+        "kube_node_status_capacity": [],
+        "kube_node_status_allocatable": [],
         "kube_node_status_allocatable_cpu_cores": [],
     }
     FILE_PREFIX = "node_metrics_granular"

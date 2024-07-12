@@ -25,6 +25,7 @@ class ContainerMetrics(BaseMetrics):
     FILE_PREFIX = "container_metrics"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_container_metrics_0-{derive_suffix_from_settings()}.parquet"
 
+
 class ContainerMetricsGranular(BaseMetrics):
     list_of_metrics = {
         "container_memory_usage_bytes": [],
@@ -35,6 +36,10 @@ class ContainerMetricsGranular(BaseMetrics):
         "container_cpu_cfs_throttled_seconds_total": [],
         "container_spec_cpu_quota": [],
         "container_spec_cpu_period": [],
+        "container_fs_usage_bytes": [],
+        "container_fs_reads_bytes_total": [],
+        "container_fs_writes_bytes_total": [],
+        "container_last_seen": [],
     }
     FILE_PREFIX = "container_metrics_granular"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_container_metrics_granular_0-{derive_suffix_from_settings()}.parquet"
