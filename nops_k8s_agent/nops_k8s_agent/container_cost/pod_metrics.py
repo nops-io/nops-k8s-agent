@@ -39,12 +39,19 @@ class PodMetrics(BaseMetrics):
 
 class PodMetricsGranular(BaseMetrics):
     list_of_metrics = {
+        "kube_pod_owner": [],
+        "kube_pod_container_status_running": [],
         "kube_pod_container_resource_limits": [],
         "kube_pod_container_resource_requests": [],
+        "kube_pod_status_phase": [],
+        "kube_pod_container_status_terminated_reason": [],
+        "kube_pod_container_status_restarts_total": [],
         "kube_pod_container_resource_requests_cpu_cores": [],
         "kube_pod_container_resource_limits_cpu_cores": [],
         "kube_pod_container_resource_limits_memory_bytes": [],
         "kube_pod_container_resource_requests_memory_bytes": [],
+        "pod_pvc_allocation": [],
+        "kube_pod_spec_volumes_persistentvolumeclaims_info": [],
     }
     FILE_PREFIX = "pod_metrics_granular"
     FILENAME = f"v{SCHEMA_VERSION_DATE}_pod_metrics_granular_0-{derive_suffix_from_settings()}.parquet"
