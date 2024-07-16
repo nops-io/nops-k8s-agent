@@ -1,0 +1,304 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "prometheus-node-exporter.fullname" . }}
+  namespace: {{ include "prometheus-node-exporter.namespace" . }}
+  labels:
+    {{- include "prometheus-node-exporter.labels" . | nindent 4 }}
+  {{- with .Values.prometheus.nodeExporter.daemonsetAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "prometheus-node-exporter.selectorLabels" . | nindent 6 }}
+  revisionHistoryLimit: {{ .Values.prometheus.nodeExporter.revisionHistoryLimit }}
+  {{- with .Values.prometheus.nodeExporter.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.prometheus.nodeExporter.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "prometheus-node-exporter.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: {{ ternary true false (or .Values.prometheus.nodeExporter.serviceAccount.automountServiceAccountToken .Values.prometheus.nodeExporter.kubeRBACProxy.enabled) }}
+      {{- with .Values.prometheus.nodeExporter.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "prometheus-node-exporter.serviceAccountName" . }}
+      {{- with .Values.prometheus.nodeExporter.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
+      {{- end }}
+      containers:
+        {{- $servicePort := ternary .Values.prometheus.nodeExporter.kubeRBACProxy.port .Values.prometheus.nodeExporter.service.port .Values.prometheus.nodeExporter.kubeRBACProxy.enabled }}
+        - name: node-exporter
+          image: "{{ .Values.prometheus.nodeExporter.image.repository }}:{{ .Values.prometheus.nodeExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.prometheus.nodeExporter.image.pullPolicy }}
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            {{- if .Values.prometheus.nodeExporter.hostRootFsMount.enabled }}
+            - --path.rootfs=/host/root
+            {{- end }}
+            - --web.listen-address=[$(HOST_IP)]:{{ $servicePort }}
+            {{- with .Values.prometheus.nodeExporter.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.prometheus.nodeExporter.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: HOST_IP
+              {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enabled }}
+              value: 127.0.0.1
+              {{- else if .Values.prometheus.nodeExporter.listenOnAllInterfaces }}
+              value: 0.0.0.0
+              {{- else }}
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+              {{- end }}
+            {{- range $key, $value := .Values.prometheus.nodeExporter.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if eq .Values.prometheus.nodeExporter.kubeRBACProxy.enabled false }}
+          ports:
+            - name: {{ .Values.prometheus.nodeExporter.service.portName }}
+              containerPort: {{ .Values.prometheus.nodeExporter.service.port }}
+              protocol: TCP
+          {{- end }}
+          livenessProbe:
+            failureThreshold: {{ .Values.prometheus.nodeExporter.livenessProbe.failureThreshold }}
+            httpGet:
+              {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enabled }}
+              host: 127.0.0.1
+              {{- end }}
+              httpHeaders:
+              {{- range $_, $header := .Values.prometheus.nodeExporter.livenessProbe.httpGet.httpHeaders }}
+              - name: {{ $header.name }}
+                value: {{ $header.value }}
+              {{- end }}
+              path: /
+              port: {{ $servicePort }}
+              scheme: {{ upper .Values.prometheus.nodeExporter.livenessProbe.httpGet.scheme }}
+            initialDelaySeconds: {{ .Values.prometheus.nodeExporter.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.prometheus.nodeExporter.livenessProbe.periodSeconds }}
+            successThreshold: {{ .Values.prometheus.nodeExporter.livenessProbe.successThreshold }}
+            timeoutSeconds: {{ .Values.prometheus.nodeExporter.livenessProbe.timeoutSeconds }}
+          readinessProbe:
+            failureThreshold: {{ .Values.prometheus.nodeExporter.readinessProbe.failureThreshold }}
+            httpGet:
+              {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enabled }}
+              host: 127.0.0.1
+              {{- end }}
+              httpHeaders:
+              {{- range $_, $header := .Values.prometheus.nodeExporter.readinessProbe.httpGet.httpHeaders }}
+              - name: {{ $header.name }}
+                value: {{ $header.value }}
+              {{- end }}
+              path: /
+              port: {{ $servicePort }}
+              scheme: {{ upper .Values.prometheus.nodeExporter.readinessProbe.httpGet.scheme }}
+            initialDelaySeconds: {{ .Values.prometheus.nodeExporter.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.prometheus.nodeExporter.readinessProbe.periodSeconds }}
+            successThreshold: {{ .Values.prometheus.nodeExporter.readinessProbe.successThreshold }}
+            timeoutSeconds: {{ .Values.prometheus.nodeExporter.readinessProbe.timeoutSeconds }}
+          {{- with .Values.prometheus.nodeExporter.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.prometheus.nodeExporter.terminationMessageParams.enabled }}
+          {{- with .Values.prometheus.nodeExporter.terminationMessageParams }}
+          terminationMessagePath: {{ .terminationMessagePath }}
+          terminationMessagePolicy: {{ .terminationMessagePolicy }}
+          {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              {{- with .Values.prometheus.nodeExporter.hostProcFsMount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+              readOnly:  true
+            - name: sys
+              mountPath: /host/sys
+              {{- with .Values.prometheus.nodeExporter.hostSysFsMount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+              readOnly: true
+            {{- if .Values.prometheus.nodeExporter.hostRootFsMount.enabled }}
+            - name: root
+              mountPath: /host/root
+              {{- with .Values.prometheus.nodeExporter.hostRootFsMount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+              readOnly: true
+            {{- end }}
+            {{- range $_, $mount := .Values.prometheus.nodeExporter.extraHostVolumeMounts }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: {{ $mount.readOnly }}
+              {{- with $mount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+            {{- end }}
+            {{- range $_, $mount := .Values.prometheus.nodeExporter.sidecarVolumeMount }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- range $_, $mount := .Values.prometheus.nodeExporter.configmaps }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+            {{- end }}
+            {{- range $_, $mount := .Values.prometheus.nodeExporter.secrets }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+        {{- range .Values.prometheus.nodeExporter.sidecars }}
+          {{- $overwrites := dict "volumeMounts" (concat (include "prometheus-node-exporter.sidecarVolumeMounts" $ | fromYamlArray) (.volumeMounts | default list) | default list) }}
+          {{- $defaults := dict "image" (include "prometheus-node-exporter.image" $) "securityContext" $.Values.containerSecurityContext "imagePullPolicy" $.Values.image.pullPolicy }}
+        - {{- toYaml (merge $overwrites . $defaults) | nindent 10 }}
+        {{- end }}
+        {{-  if .Values.prometheus.nodeExporter.kubeRBACProxy.enabled  }}
+        - name: kube-rbac-proxy
+          args:
+            {{-  if .Values.prometheus.nodeExporter.kubeRBACProxy.extraArgs  }}
+            {{- .Values.prometheus.nodeExporter.kubeRBACProxy.extraArgs | toYaml | nindent 12 }}
+            {{-  end  }}
+            - --secure-listen-address=:{{ .Values.prometheus.nodeExporter.service.port}}
+            - --upstream=http://127.0.0.1:{{ $servicePort }}/
+            - --proxy-endpoints-port={{ .Values.prometheus.nodeExporter.kubeRBACProxy.proxyEndpointsPort }}
+            - --config-file=/etc/kube-rbac-proxy-config/config-file.yaml
+          volumeMounts:
+            - name: kube-rbac-proxy-config
+              mountPath: /etc/kube-rbac-proxy-config
+          imagePullPolicy: {{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.pullPolicy }}
+          {{- if .Values.kubeRBACProxy.image.sha }}
+          image: "{{ .Values.global.imageRegistry | default .Values.prometheus.nodeExporter.kubeRBACProxy.image.registry}}/{{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.repository }}:{{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.tag }}@sha256:{{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.sha }}"
+          {{- else }}
+          image: "{{ .Values.global.imageRegistry | default .Values.prometheus.nodeExporter.kubeRBACProxy.image.registry}}/{{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.repository }}:{{ .Values.prometheus.nodeExporter.kubeRBACProxy.image.tag }}"
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.prometheus.nodeExporter.service.port}}
+              name: {{ .Values.prometheus.nodeExporter.kubeRBACProxy.portName }}
+              {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enableHostPort }}
+              hostPort: {{ .Values.prometheus.nodeExporter.service.port }}
+              {{- end }}
+            - containerPort: {{ .Values.prometheus.nodeExporter.kubeRBACProxy.proxyEndpointsPort }}
+              {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enableProxyEndpointsHostPort }}
+              hostPort: {{ .Values.prometheus.nodeExporter.kubeRBACProxy.proxyEndpointsPort }}
+              {{- end }}
+              name: "http-healthz"
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              port: {{ .Values.prometheus.nodeExporter.kubeRBACProxy.proxyEndpointsPort }}
+              path: healthz
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.resources }}
+          resources:
+          {{- toYaml .Values.prometheus.nodeExporter.kubeRBACProxy.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.prometheus.nodeExporter.terminationMessageParams.enabled }}
+          {{- with .Values.prometheus.nodeExporter.terminationMessageParams }}
+          terminationMessagePath: {{ .terminationMessagePath }}
+          terminationMessagePolicy: {{ .terminationMessagePolicy }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.prometheus.nodeExporter.kubeRBACProxy.env }}
+          env:
+            {{- range $key, $value := $.Values.prometheus.nodeExporter.kubeRBACProxy.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.containerSecurityContext }}
+          securityContext:
+          {{ toYaml .Values.prometheus.nodeExporter.kubeRBACProxy.containerSecurityContext | nindent 12 }}
+        {{- end }}
+        {{- end }}
+      hostNetwork: {{ .Values.prometheus.nodeExporter.hostNetwork }}
+      hostPID: {{ .Values.prometheus.nodeExporter.hostPID }}
+      {{- with .Values.prometheus.nodeExporter.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.restartPolicy }}
+      restartPolicy: {{ . }}
+      {{- end }}
+      {{- with .Values.prometheus.nodeExporter.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        {{- if .Values.prometheus.nodeExporter.hostRootFsMount.enabled }}
+        - name: root
+          hostPath:
+            path: /
+        {{- end }}
+        {{- range $_, $mount := .Values.prometheus.nodeExporter.extraHostVolumeMounts }}
+        - name: {{ $mount.name }}
+          hostPath:
+            path: {{ $mount.hostPath }}
+            {{- with $mount.type }}
+            type: {{ . }}
+            {{- end }}
+        {{- end }}
+        {{- range $_, $mount := .Values.prometheus.nodeExporter.sidecarVolumeMount }}
+        - name: {{ $mount.name }}
+          emptyDir:
+            medium: Memory
+        {{- end }}
+        {{- range $_, $mount := .Values.prometheus.nodeExporter.sidecarHostVolumeMounts }}
+        - name: {{ $mount.name }}
+          hostPath:
+            path: {{ $mount.hostPath }}
+        {{- end }}
+        {{- range $_, $mount := .Values.prometheus.nodeExporter.configmaps }}
+        - name: {{ $mount.name }}
+          configMap:
+            name: {{ $mount.name }}
+        {{- end }}
+        {{- range $_, $mount := .Values.prometheus.nodeExporter.secrets }}
+        - name: {{ $mount.name }}
+          secret:
+            secretName: {{ $mount.name }}
+        {{- end }}
+        {{- if .Values.prometheus.nodeExporter.kubeRBACProxy.enabled }}
+        - name: kube-rbac-proxy-config
+          configMap:
+            name: {{ template "prometheus-node-exporter.fullname" . }}-rbac-config
+        {{- end }}

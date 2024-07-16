@@ -1,0 +1,24 @@
+{{- if and (eq  .Values.prometheus.kubeStateMetrics.rbac.create true) (eq .Values.prometheus.kubeStateMetrics.rbac.useClusterRole false) -}}
+{{- range (join "," $.Values.prometheus.kubeStateMetrics.namespaces) | split "," }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    {{- include "kube-state-metrics.labels" $ | indent 4 }}
+  name: {{ template "kube-state-metrics.fullname" $ }}
+  namespace: {{ . }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+{{- if (not $.Values.prometheus.kubeStateMetrics.rbac.useExistingRole) }}
+  name: {{ template "kube-state-metrics.fullname" $ }}
+{{- else }}
+  name: {{ $.Values.prometheus.kubeStateMetrics.rbac.useExistingRole }}
+{{- end }}
+subjects:
+- kind: ServiceAccount
+  name: {{ template "kube-state-metrics.serviceAccountName" $ }}
+  namespace: {{ template "kube-state-metrics.namespace" $ }}
+{{- end -}}
+{{- end -}}

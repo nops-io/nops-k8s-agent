@@ -1,0 +1,313 @@
+apiVersion: apps/v1
+{{- if .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ template "kube-state-metrics.fullname" . }}
+  namespace: {{ template "kube-state-metrics.namespace" . }}
+  labels:
+    {{- include "kube-state-metrics.labels" . | indent 4 }}
+  {{- if .Values.prometheus.kubeStateMetrics.annotations }}
+  annotations:
+{{ toYaml .Values.prometheus.kubeStateMetrics.annotations | indent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kube-state-metrics.selectorLabels" . | indent 6 }}
+  replicas: {{ .Values.prometheus.kubeStateMetrics.replicas }}
+  {{- if not .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+  strategy:
+    type: {{ .Values.prometheus.kubeStateMetrics.updateStrategy | default "RollingUpdate" }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.prometheus.kubeStateMetrics.revisionHistoryLimit }}
+  {{- if .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+  serviceName: {{ template "kube-state-metrics.fullname" . }}
+  volumeClaimTemplates: []
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-state-metrics.labels" . | indent 8 }}
+      {{- if .Values.prometheus.kubeStateMetrics.podAnnotations }}
+      annotations:
+{{ toYaml .Values.prometheus.kubeStateMetrics.podAnnotations | indent 8 }}
+      {{- end }}
+    spec:
+      automountServiceAccountToken: {{ .Values.prometheus.kubeStateMetrics.automountServiceAccountToken }}
+      hostNetwork: {{ .Values.prometheus.kubeStateMetrics.hostNetwork }}
+      serviceAccountName: {{ template "kube-state-metrics.serviceAccountName" . }}
+      {{- if .Values.prometheus.kubeStateMetrics.securityContext.enabled }}
+      securityContext: {{- omit .Values.prometheus.kubeStateMetrics.securityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+    {{- if .Values.prometheus.kubeStateMetrics.priorityClassName }}
+      priorityClassName: {{ .Values.prometheus.kubeStateMetrics.priorityClassName }}
+    {{- end }}
+      {{- with .Values.prometheus.kubeStateMetrics.initContainers }}
+      initContainers:
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      containers:
+      {{- $servicePort := ternary 9090 (.Values.prometheus.kubeStateMetrics.service.port | default 8080) .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled}}
+      {{- $telemetryPort := ternary 9091 (.Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081) .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled}}
+      - name: {{ template "kube-state-metrics.name" . }}
+        {{- if  .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- end }}
+        args:
+        {{-  if .Values.prometheus.kubeStateMetrics.extraArgs  }}
+        {{- .Values.prometheus.kubeStateMetrics.extraArgs | toYaml | nindent 8 }}
+        {{-  end  }}
+        - --port={{ $servicePort }}
+        {{-  if .Values.prometheus.kubeStateMetrics.collectors  }}
+        - --resources={{ .Values.prometheus.kubeStateMetrics.collectors | join "," }}
+        {{-  end  }}
+        {{- if .Values.prometheus.kubeStateMetrics.metricLabelsAllowlist }}
+        - --metric-labels-allowlist={{ .Values.prometheus.kubeStateMetrics.metricLabelsAllowlist | join "," }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.metricAnnotationsAllowList }}
+        - --metric-annotations-allowlist={{ .Values.prometheus.kubeStateMetrics.metricAnnotationsAllowList | join "," }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.metricAllowlist }}
+        - --metric-allowlist={{ .Values.prometheus.kubeStateMetrics.metricAllowlist | join "," }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.metricDenylist }}
+        - --metric-denylist={{ .Values.prometheus.kubeStateMetrics.metricDenylist | join "," }}
+        {{- end }}
+        {{- $namespaces := list }}
+        {{- if .Values.prometheus.kubeStateMetrics.namespaces }}
+        {{- range $ns := join "," .Values.prometheus.kubeStateMetrics.namespaces | split "," }}
+        {{- $namespaces = append $namespaces (tpl $ns $) }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.releaseNamespace }}
+        {{- $namespaces = append $namespaces ( include "kube-state-metrics.namespace" . ) }}
+        {{- end }}
+        {{- if $namespaces }}
+        - --namespaces={{ $namespaces | mustUniq | join "," }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.namespacesDenylist }}
+        - --namespaces-denylist={{ tpl (.Values.prometheus.kubeStateMetrics.namespacesDenylist | join ",") $ }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+        - --pod=$(POD_NAME)
+        - --pod-namespace=$(POD_NAMESPACE)
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.kubeconfig.enabled }}
+        - --kubeconfig=/opt/k8s/.kube/config
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled }}
+        - --telemetry-host=127.0.0.1
+        - --telemetry-port={{ $telemetryPort }}
+        {{- else }}
+        {{- if .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryHost }}
+        - --telemetry-host={{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryHost }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort }}
+        - --telemetry-port={{ $telemetryPort }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.customResourceState.enabled }}
+        - --custom-resource-state-config-file=/etc/customresourcestate/config.yaml
+        {{- end }}
+        {{- if or (.Values.prometheus.kubeStateMetrics.kubeconfig.enabled) (.Values.prometheus.kubeStateMetrics.customResourceState.enabled) (.Values.prometheus.kubeStateMetrics.volumeMounts) }}
+        volumeMounts:
+        {{- if .Values.prometheus.kubeStateMetrics.kubeconfig.enabled }}
+        - name: kubeconfig
+          mountPath: /opt/k8s/.kube/
+          readOnly: true
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.customResourceState.enabled }}
+        - name: customresourcestate-config
+          mountPath: /etc/customresourcestate
+          readOnly: true
+        {{- end }}
+        {{- if .Values.prometheus.kubeStateMetrics.volumeMounts }}
+{{ toYaml .Values.prometheus.kubeStateMetrics.volumeMounts | indent 8 }}
+        {{- end }}
+        {{- end }}
+        imagePullPolicy: {{ .Values.prometheus.kubeStateMetrics.image.pullPolicy }}
+        image: {{ include "kube-state-metrics.image" . }}
+        {{- if eq .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled false }}
+        ports:
+        - containerPort: {{ .Values.prometheus.kubeStateMetrics.service.port | default 8080}}
+          name: "http"
+        {{- if .Values.prometheus.kubeStateMetrics.selfMonitor.enabled }}
+        - containerPort: {{ $telemetryPort }}
+          name: "metrics"
+        {{- end }}
+        {{- end }}
+        livenessProbe:
+          failureThreshold: {{ .Values.prometheus.kubeStateMetrics.livenessProbe.failureThreshold }}
+          httpGet:
+            {{- if .Values.prometheus.kubeStateMetrics.hostNetwork }}
+            host: 127.0.0.1
+            {{- end }}
+            httpHeaders:
+            {{- range $_, $header := .Values.prometheus.kubeStateMetrics.livenessProbe.httpGet.httpHeaders }}
+            - name: {{ $header.name }}
+              value: {{ $header.value }}
+            {{- end }}
+            path: /healthz
+            port: {{ $servicePort }}
+            scheme: {{ upper .Values.prometheus.kubeStateMetrics.livenessProbe.httpGet.scheme }}
+          initialDelaySeconds: {{ .Values.prometheus.kubeStateMetrics.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.prometheus.kubeStateMetrics.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.prometheus.kubeStateMetrics.livenessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.prometheus.kubeStateMetrics.livenessProbe.timeoutSeconds }}
+        readinessProbe:
+          failureThreshold: {{ .Values.prometheus.kubeStateMetrics.readinessProbe.failureThreshold }}
+          httpGet:
+            {{- if .Values.prometheus.kubeStateMetrics.hostNetwork }}
+            host: 127.0.0.1
+            {{- end }}
+            httpHeaders:
+            {{- range $_, $header := .Values.prometheus.kubeStateMetrics.readinessProbe.httpGet.httpHeaders }}
+            - name: {{ $header.name }}
+              value: {{ $header.value }}
+            {{- end }}
+            path: /
+            port: {{ $servicePort }}
+            scheme: {{ upper .Values.prometheus.kubeStateMetrics.readinessProbe.httpGet.scheme }}
+          initialDelaySeconds: {{ .Values.prometheus.kubeStateMetrics.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.prometheus.kubeStateMetrics.readinessProbe.periodSeconds }}
+          successThreshold: {{ .Values.prometheus.kubeStateMetrics.readinessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.prometheus.kubeStateMetrics.readinessProbe.timeoutSeconds }}
+        resources:
+{{ toYaml .Values.prometheus.kubeStateMetrics.resources | indent 10 }}
+{{- if .Values.prometheus.kubeStateMetrics.containerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.prometheus.kubeStateMetrics.containerSecurityContext | indent 10 }}
+{{- end }}
+        {{-  if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled  }}
+      - name: kube-rbac-proxy-http
+        args:
+        {{-  if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.extraArgs  }}
+        {{- .Values.prometheus.kubeStateMetrics.kubeRBACProxy.extraArgs | toYaml | nindent 8 }}
+        {{-  end  }}
+        - --secure-listen-address=:{{ .Values.prometheus.kubeStateMetrics.service.port | default 8080}}
+        - --upstream=http://127.0.0.1:{{ $servicePort }}/
+        - --proxy-endpoints-port=8888
+        - --config-file=/etc/kube-rbac-proxy-config/config-file.yaml
+        volumeMounts:
+          - name: kube-rbac-proxy-config
+            mountPath: /etc/kube-rbac-proxy-config
+          {{- with .Values.prometheus.kubeStateMetrics.kubeRBACProxy.volumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        imagePullPolicy: {{ .Values.prometheus.kubeStateMetrics.kubeRBACProxy.image.pullPolicy }}
+        image: {{ include "kubeRBACProxy.image" . }}
+        ports:
+          - containerPort: {{ .Values.prometheus.kubeStateMetrics.service.port | default 8080}}
+            name: "http"
+          - containerPort: 8888
+            name: "http-healthz"
+        readinessProbe:
+          httpGet:
+            scheme: HTTPS
+            port: 8888
+            path: healthz
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        {{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.resources }}
+        resources:
+{{ toYaml .Values.prometheus.kubeStateMetrics.kubeRBACProxy.resources | indent 10 }}
+{{- end }}
+{{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.containerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.prometheus.kubeStateMetrics.kubeRBACProxy.containerSecurityContext | indent 10 }}
+{{- end }}
+      {{-  if .Values.prometheus.kubeStateMetrics.selfMonitor.enabled  }}
+      - name: kube-rbac-proxy-telemetry
+        args:
+        {{-  if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.extraArgs  }}
+        {{- .Values.prometheus.kubeStateMetrics.kubeRBACProxy.extraArgs | toYaml | nindent 8 }}
+        {{-  end  }}
+        - --secure-listen-address=:{{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081 }}
+        - --upstream=http://127.0.0.1:{{ $telemetryPort }}/
+        - --proxy-endpoints-port=8889
+        - --config-file=/etc/kube-rbac-proxy-config/config-file.yaml
+        volumeMounts:
+          - name: kube-rbac-proxy-config
+            mountPath: /etc/kube-rbac-proxy-config
+          {{- with .Values.prometheus.kubeStateMetrics.kubeRBACProxy.volumeMounts }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        imagePullPolicy: {{ .Values.prometheus.kubeStateMetrics.kubeRBACProxy.image.pullPolicy }}
+        image: {{ include "kubeRBACProxy.image" . }}
+        ports:
+          - containerPort: {{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081 }}
+            name: "metrics"
+          - containerPort: 8889
+            name: "metrics-healthz"
+        readinessProbe:
+          httpGet:
+            scheme: HTTPS
+            port: 8889
+            path: healthz
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        {{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.resources }}
+        resources:
+{{ toYaml .Values.prometheus.kubeStateMetrics.kubeRBACProxy.resources | indent 10 }}
+{{- end }}
+{{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.containerSecurityContext }}
+        securityContext:
+{{ toYaml .Values.prometheus.kubeStateMetrics.kubeRBACProxy.containerSecurityContext | indent 10 }}
+{{- end }}
+      {{- end }}
+      {{- end }}
+      {{- with .Values.prometheus.kubeStateMetrics.containers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+{{- if or .Values.prometheus.kubeStateMetrics.imagePullSecrets .Values.prometheus.kubeStateMetrics.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- include "kube-state-metrics.imagePullSecrets" (dict "Values" .Values "imagePullSecrets" .Values.prometheus.kubeStateMetrics.imagePullSecrets) | indent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.affinity }}
+      affinity:
+{{ toYaml .Values.prometheus.kubeStateMetrics.affinity | indent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.prometheus.kubeStateMetrics.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.tolerations }}
+      tolerations:
+{{ toYaml .Values.prometheus.kubeStateMetrics.tolerations | indent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ toYaml .Values.prometheus.kubeStateMetrics.topologySpreadConstraints | indent 8 }}
+      {{- end }}
+      {{- if or (.Values.prometheus.kubeStateMetrics.kubeconfig.enabled) (.Values.prometheus.kubeStateMetrics.customResourceState.enabled) (.Values.prometheus.kubeStateMetrics.volumes) (.Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled) }}
+      volumes:
+      {{- if .Values.prometheus.kubeStateMetrics.kubeconfig.enabled}}
+        - name: kubeconfig
+          secret:
+            secretName: {{ template "kube-state-metrics.fullname" . }}-kubeconfig
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled}}
+        - name: kube-rbac-proxy-config
+          configMap:
+            name: {{ template "kube-state-metrics.fullname" . }}-rbac-config
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.customResourceState.enabled}}
+        - name: customresourcestate-config
+          configMap:
+            name: {{ template "kube-state-metrics.fullname" . }}-customresourcestate-config
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.volumes }}
+{{ toYaml .Values.prometheus.kubeStateMetrics.volumes | indent 8 }}
+      {{- end }}
+      {{- end }}

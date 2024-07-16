@@ -1,0 +1,44 @@
+{{- if and (.Capabilities.APIVersions.Has "autoscaling.k8s.io/v1") (.Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.enabled) }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ template "kube-state-metrics.fullname" . }}
+  namespace: {{ template "kube-state-metrics.namespace" . }}
+  labels:
+    {{- include "kube-state-metrics.labels" . | indent 4 }}
+spec:
+  {{- with .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.recommenders }}
+  recommenders:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  resourcePolicy:
+    containerPolicies:
+    - containerName: {{ template "kube-state-metrics.name" . }}
+      {{- with .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.controlledResources }}
+      controlledResources:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.controlledValues }}
+      controlledValues: {{ .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.controlledValues }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.maxAllowed }}
+      maxAllowed:
+        {{ toYaml .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.maxAllowed | nindent 8 }}
+      {{- end }}
+      {{- if .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.minAllowed }}
+      minAllowed:
+        {{ toYaml .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.minAllowed | nindent 8 }}
+      {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    {{- if .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+    kind: StatefulSet
+    {{- else }}
+    kind: Deployment
+    {{- end }}
+    name:  {{ template "kube-state-metrics.fullname" . }}
+  {{- with .Values.prometheus.kubeStateMetrics.verticalPodAutoscaler.updatePolicy }}
+  updatePolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

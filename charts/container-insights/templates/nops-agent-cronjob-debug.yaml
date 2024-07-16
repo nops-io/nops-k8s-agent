@@ -1,0 +1,82 @@
+{{- if .Values.nopsAgent.debug }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}-debug-log-exporter
+spec:
+  schedule: "45 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          activeDeadlineSeconds: {{ .Values.nopsAgent.activeDeadlineSeconds }}
+          {{- if .Values.nopsAgent.serviceAccount.create }}
+          serviceAccountName: nops-k8s-agent
+          {{- else }}
+          serviceAccountName: default
+          {{- end }}
+          containers:
+          - name: {{ .Chart.Name }}
+            image: "bearengineer/awscli-kubectl"
+            imagePullPolicy: IfNotPresent
+            resources:
+              limits:
+                cpu: {{ .Values.nopsAgent.resources.limits.cpu }}
+                memory: {{ .Values.nopsAgent.resources.limits.memory }}
+              requests:
+                cpu: {{ .Values.nopsAgent.resources.requests.cpu }}
+                memory: {{ .Values.nopsAgent.resources.requests.memory }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
+              {{- if .Values.nopsAgent.secrets.useAwsCredentials }}
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_access_key_id
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_secret_access_key
+              {{- end }}
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            command: ["/bin/sh", "-c"]
+            args:
+              - >
+                YEAR=$(date +'%Y') &&
+                MONTH=$(date +'%m') &&
+                DAY=$(date +'%d') &&
+                CURRENT_HOUR=$(date +'%H') &&
+                if [ "$CURRENT_HOUR" -eq 00 ]; then
+                  HOUR=23
+                else
+                  HOUR=$(expr $CURRENT_HOUR - 1)
+                  if [ "$HOUR" -lt 10 ]; then
+                    HOUR=0$HOUR
+                  fi
+                fi &&
+                NAMESPACE_COST="nops-cost" &&
+                NAMESPACE_PROMETHEUS="nops-prometheus-system" &&
+                CONTAINER_COST="nops-cost" &&
+                CONTAINER_PROMETHEUS="prometheus-server" &&
+                for pod in $(kubectl get pods -n $NAMESPACE_COST -o jsonpath='{.items[*].metadata.name}'); do 
+                  kubectl logs $pod -n $NAMESPACE_COST -c $CONTAINER_COST --since=1h | tee -a /tmp/nops-cost-logs.txt; 
+                done &&
+                for pod in $(kubectl get pods -n $NAMESPACE_PROMETHEUS -o jsonpath='{.items[*].metadata.name}'); do 
+                  kubectl logs $pod -n $NAMESPACE_PROMETHEUS -c $CONTAINER_PROMETHEUS --since=1h | tee -a /tmp/nops-prometheus-logs.txt; 
+                done &&
+                echo "going to upload everything" &&
+                ENCODED_CLUSTER_ARN=$(echo {{ .Values.nopsAgent.env_variables.APP_NOPS_K8S_AGENT_CLUSTER_ARN }} | sed -e 's|/|%2F|g') &&
+                aws s3 cp /tmp/nops-cost-logs.txt s3://{{ .Values.nopsAgent.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.nopsAgent.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/cluster_arn=${ENCODED_CLUSTER_ARN}/nops-cost-logs.txt &&
+                aws s3 cp /tmp/nops-prometheus-logs.txt s3://{{ .Values.nopsAgent.env_variables.APP_AWS_S3_BUCKET }}/{{ .Values.nopsAgent.env_variables.APP_AWS_S3_PREFIX }}debugging-logs/year=${YEAR}/month=${MONTH}/day=${DAY}/hour=${HOUR}/cluster_arn=${ENCODED_CLUSTER_ARN}/nops-prometheus-logs.txt &&
+                rm /tmp/nops-prometheus-logs.txt &&
+                rm /tmp/nops-cost-logs.txt
+          restartPolicy: Never
+{{- end }}

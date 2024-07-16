@@ -1,0 +1,48 @@
+{{- if .Values.opencost.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opencost.fullname" . }}
+  namespace: {{ include "opencost.namespace" . }}
+  labels:
+    {{- include "opencost.labels" . | nindent 4 }}
+    {{- with .Values.opencost.service.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.opencost.service.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector: {{- include "opencost.selectorLabels" . | nindent 4 }}
+  {{- if and .Values.opencost.service .Values.opencost.service.type }}
+  type: "{{ .Values.opencost.service.type }}"
+  {{- end }}
+  {{- if (eq .Values.opencost.service.type "LoadBalancer") }}
+    {{- if .Values.opencost.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{ toYaml .Values.opencost.service.loadBalancerSourceRanges | indent 4 }}
+    {{- end -}}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.opencost.opencost.exporter.apiPort }}
+      targetPort: {{ .Values.opencost.opencost.exporter.apiPort }}
+    {{- if .Values.opencost.opencost.ui.enabled }}
+    - name: http-ui
+      port: {{ .Values.opencost.opencost.ui.uiPort }}
+      targetPort: {{ .Values.opencost.opencost.ui.uiPort }}
+      {{- if (eq .Values.opencost.service.type "NodePort") }}
+        {{- if .Values.opencost.service.nodePort }}
+      nodePort: {{ .Values.opencost.service.nodePort }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.opencost.opencost.exporter.debugPort }}
+    - name: debug-port
+      port: {{ .Values.opencost.opencost.exporter.debugPort }}
+      targetPort: {{ .Values.opencost.opencost.debugPort }}
+    {{- end }}
+    {{- with .Values.opencost.service.extraPorts }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

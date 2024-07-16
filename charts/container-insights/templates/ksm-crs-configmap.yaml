@@ -1,0 +1,16 @@
+{{- if .Values.prometheus.kubeStateMetrics.customResourceState.enabled}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "kube-state-metrics.fullname" . }}-customresourcestate-config
+  namespace: {{ template "kube-state-metrics.namespace" . }}
+  labels:
+    {{- include "kube-state-metrics.labels" . | indent 4 }}
+  {{- if .Values.prometheus.kubeStateMetrics.annotations }}
+  annotations:
+    {{ toYaml .Values.prometheus.kubeStateMetrics.annotations | nindent 4 }}
+  {{- end }}
+data:
+  config.yaml: |
+    {{- toYaml .Values.prometheus.kubeStateMetrics.customResourceState.config | nindent 4 }}
+{{- end }}

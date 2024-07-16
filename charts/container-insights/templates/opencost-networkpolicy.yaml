@@ -1,0 +1,49 @@
+{{- $apiVersion := (include "networkingAPIVersion" .) }}
+{{- if .Values.opencost.networkPolicies.enabled -}}
+{{- if .Values.opencost.opencost.prometheus.internal.enabled }}
+---
+{{ $apiVersion }}
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-opencost
+  namespace: {{ include "opencost.namespace" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: opencost
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+      - podSelector:
+          matchLabels:
+          {{- range $key, $val := .Values.opencost.networkPolicies.prometheus.labels }}
+            {{ $key }}: {{ $val }}
+          {{- end }}
+        {{- if ne .Values.opencost.networkPolicies.prometheus.namespace .Release.Namespace }}
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: {{ .Values.opencost.networkPolicies.prometheus.namespace }}
+        {{- end }}
+      ports:
+      - port: 9003
+  egress:
+    - to:
+      - podSelector:
+          matchLabels:
+          {{- range $key, $val := .Values.opencost.networkPolicies.prometheus.labels }}
+            {{ $key }}: {{ $val }}
+          {{- end }}
+        {{- if ne .Values.opencost.networkPolicies.prometheus.namespace .Release.Namespace }}
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: {{ .Values.opencost.networkPolicies.prometheus.namespace }}
+        {{- end }}
+      ports:
+      - port: {{ .Values.opencost.networkPolicies.prometheus.port }}
+    {{- if .Values.opencost.networkPolicies.extraEgress -}}
+      {{ toYaml .Values.opencost.networkPolicies.extraEgress | nindent 4 }}
+    {{- end -}}
+{{- end }}
+{{- end }}

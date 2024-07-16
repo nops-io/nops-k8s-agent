@@ -1,0 +1,35 @@
+{{- if .Values.prometheus.nodeExporter.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "prometheus-node-exporter.fullname" . }}
+  namespace: {{ include "prometheus-node-exporter.namespace" . }}
+  labels:
+    {{- include "prometheus-node-exporter.labels" $ | nindent 4 }}
+  {{- with .Values.prometheus.nodeExporter.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if .Values.prometheus.nodeExporter.service.ipDualStack.enabled }}
+  ipFamilies: {{ toYaml .Values.prometheus.nodeExporter.service.ipDualStack.ipFamilies | nindent 4 }}
+  ipFamilyPolicy: {{ .Values.prometheus.nodeExporter.service.ipDualStack.ipFamilyPolicy }}
+{{- end }}
+{{- if .Values.prometheus.nodeExporter.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.prometheus.nodeExporter.service.externalTrafficPolicy }}
+{{- end }}
+  type: {{ .Values.prometheus.nodeExporter.service.type }}
+{{- if and (eq .Values.prometheus.nodeExporter.service.type "ClusterIP") .Values.prometheus.nodeExporter.service.clusterIP }}
+  clusterIP: "{{ .Values.prometheus.nodeExporter.service.clusterIP }}"
+{{- end }}
+  ports:
+    - port: {{ .Values.prometheus.nodeExporter.service.port }}
+      {{- if ( and (eq .Values.prometheus.nodeExporter.service.type "NodePort" ) (not (empty .Values.prometheus.nodeExporter.service.nodePort)) ) }}
+      nodePort: {{ .Values.prometheus.nodeExporter.service.nodePort }}
+      {{- end }}
+      targetPort: {{ .Values.prometheus.nodeExporter.service.targetPort }}
+      protocol: TCP
+      name: {{ .Values.prometheus.nodeExporter.service.portName }}
+  selector:
+    {{- include "prometheus-node-exporter.selectorLabels" . | nindent 4 }}
+{{- end }}

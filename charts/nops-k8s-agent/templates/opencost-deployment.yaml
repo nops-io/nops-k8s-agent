@@ -1,0 +1,390 @@
+{{- include  "isPrometheusConfigValid" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opencost.fullname" . }}
+  namespace: {{ include "opencost.namespace" . }}
+  labels: {{- include "opencost.labels" . | nindent 4 }}
+  {{- with .Values.opencost.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.opencost.opencost.exporter.replicas }}
+  selector:
+    matchLabels: {{- include "opencost.selectorLabels" . | nindent 6 }}
+  strategy: {{ toYaml .Values.opencost.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opencost.selectorLabels" . | nindent 8 }}
+        {{- with .Values.opencost.podLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.opencost.podAnnotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.opencost.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.opencost.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.opencost.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ template "opencost.serviceAccountName" . }}
+      {{- with .Values.opencost.opencost.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.opencost.opencost.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.opencost.opencost.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with.Values.opencost.opencost.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if (and .Values.opencost.plugins.enabled .Values.opencost.plugins.install.enabled )}}
+      initContainers:
+        - name: plugin-installer
+          image: {{ .Values.opencost.plugins.install.fullImageName }}
+          command: ["sh", "/install/install_plugins.sh"]
+      {{- with .Values.opencost.plugins.install.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+      {{- end }}
+          volumeMounts:
+            - name: install-script
+              mountPath: /install
+            - name: plugins-dir
+              mountPath: {{ .Values.opencost.plugins.folder }}
+      {{- end }}
+      containers:
+        - name: {{ include "opencost.fullname" . }}
+          image: {{ include "opencost.fullImageName" . }}
+          imagePullPolicy: {{ .Values.opencost.opencost.exporter.image.pullPolicy }}
+          args:
+          {{- range .Values.opencost.opencost.exporter.extraArgs }}
+          - --{{ . }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.opencost.opencost.exporter.apiPort }}
+              name: http
+          resources: {{- toYaml .Values.opencost.opencost.exporter.resources | nindent 12 }}
+          {{- if .Values.opencost.opencost.exporter.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.opencost.opencost.exporter.startupProbe.path }}
+              port: {{ .Values.opencost.opencost.exporter.apiPort }}
+            initialDelaySeconds: {{ .Values.opencost.opencost.exporter.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.opencost.opencost.exporter.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.opencost.opencost.exporter.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.opencost.opencost.exporter.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.opencost.opencost.exporter.livenessProbe.path }}
+              port: {{ .Values.opencost.opencost.exporter.apiPort }}
+            initialDelaySeconds: {{ .Values.opencost.opencost.exporter.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.opencost.opencost.exporter.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.opencost.opencost.exporter.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.opencost.opencost.exporter.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.opencost.opencost.exporter.readinessProbe.path }}
+              port: {{ .Values.opencost.opencost.exporter.apiPort }}
+            initialDelaySeconds: {{ .Values.opencost.opencost.exporter.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.opencost.opencost.exporter.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.opencost.opencost.exporter.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- with .Values.opencost.opencost.exporter.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: LOG_LEVEL
+              value: {{ .Values.opencost.loglevel }}
+            - name: CUSTOM_COST_ENABLED
+              value: {{ .Values.opencost.plugins.enabled | quote }}
+            - name: KUBECOST_NAMESPACE
+              value: {{ include "opencost.namespace" . }}
+            {{- if .Values.opencost.opencost.metrics.config.enabled }}
+            - name: METRICS_CONFIGMAP_NAME
+              value: {{ .Values.opencost.opencost.metrics.config.configmapName }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.exporter.apiPort }}
+            - name: API_PORT
+              value: {{ .Values.opencost.opencost.exporter.apiPort | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.carbonCost.enabled }}
+            - name: CARBON_ESTIMATES_ENABLED
+              value: {{ .Values.opencost.opencost.carbonCost.enabled | quote }}
+            {{- end }}
+            - name: PROMETHEUS_SERVER_ENDPOINT
+              value: {{ include "opencost.prometheusServerEndpoint" . | quote }}
+            {{- if .Values.opencost.opencost.exporter.cloudProviderApiKey }}
+            - name: CLOUD_PROVIDER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opencost.prometheus.secretname" . }}
+                  key: CLOUD_PROVIDER_API_KEY
+            {{- end }}
+            - name: CLUSTER_ID
+              value: {{ .Values.opencost.opencost.exporter.defaultClusterId | quote }}
+            {{- if .Values.opencost.opencost.exporter.aws.access_key_id }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opencost.prometheus.secretname" . }}
+                  key: AWS_ACCESS_KEY_ID
+            {{- end }}
+            {{- if .Values.opencost.opencost.exporter.aws.secret_access_key }}
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opencost.prometheus.secretname" . }}
+                  key: AWS_SECRET_ACCESS_KEY
+            {{- end }}
+            {{- if and .Values.opencost.opencost.prometheus.username_key (or .Values.opencost.opencost.prometheus.username .Values.opencost.opencost.prometheus.existingSecretName) }}
+            - name: DB_BASIC_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.opencost.opencost.prometheus.existingSecretName | default (include "opencost.prometheus.secretname" .) }}
+                  key: {{ .Values.opencost.opencost.prometheus.username_key }}
+            {{- end }}
+            {{- if and .Values.opencost.opencost.prometheus.password_key (or .Values.opencost.opencost.prometheus.password .Values.opencost.opencost.prometheus.existingSecretName) }}
+            - name: DB_BASIC_AUTH_PW
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.opencost.opencost.prometheus.existingSecretName | default (include "opencost.prometheus.secretname" .) }}
+                  key: {{ .Values.opencost.opencost.prometheus.password_key }}
+            {{- else if and .Values.opencost.opencost.prometheus.bearer_token_key (or .Values.opencost.opencost.prometheus.bearer_token .Values.opencost.opencost.prometheus.existingSecretName) }}
+            - name: DB_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.opencost.opencost.prometheus.existingSecretName | default (include "opencost.prometheus.secretname" .) }}
+                  key: {{ .Values.opencost.opencost.prometheus.bearer_token_key }}
+            {{- end }}
+            {{- if and .Values.opencost.opencost.exporter.persistence.enabled .Values.opencost.opencost.exporter.csv_path }}
+            - name: EXPORT_CSV_FILE
+              value: {{ .Values.opencost.opencost.exporter.csv_path | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.prometheus.thanos.enabled }}
+            - name: THANOS_ENABLED
+              value: 'true'
+            - name: THANOS_QUERY_URL
+              value: {{ include "opencost.thanosServerEndpoint" . | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.prometheus.thanos.queryOffset }}
+            - name: THANOS_QUERY_OFFSET
+              value: {{ .Values.opencost.opencost.prometheus.thanos.queryOffset | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.prometheus.thanos.maxSourceResolution }}
+            - name: THANOS_MAX_SOURCE_RESOLUTION
+              value: {{ .Values.opencost.opencost.prometheus.thanos.maxSourceResolution | quote }}
+            {{- end }}
+            {{- with .Values.opencost.opencost.exporter.env }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.customPricing.enabled }}
+            - name: CONFIG_PATH
+              value: {{ .Values.opencost.opencost.customPricing.configPath | quote }}
+            {{- end }}
+            - name: DATA_RETENTION_DAILY_RESOLUTION_DAYS
+              value: {{ .Values.opencost.opencost.dataRetention.dailyResolutionDays | quote }}
+            - name: CLOUD_COST_ENABLED
+              value: {{ .Values.opencost.opencost.cloudCost.enabled | quote }}
+            - name: CLOUD_COST_MONTH_TO_DATE_INTERVAL
+              value: {{ .Values.opencost.opencost.cloudCost.monthToDateInterval | quote }}
+            - name: CLOUD_COST_REFRESH_RATE_HOURS
+              value: {{ .Values.opencost.opencost.cloudCost.refreshRateHours | quote }}
+            - name: CLOUD_COST_QUERY_WINDOW_DAYS
+              value: {{ .Values.opencost.opencost.cloudCost.queryWindowDays | quote }}
+            - name: CLOUD_COST_RUN_WINDOW_DAYS
+              value: {{ .Values.opencost.opencost.cloudCost.runWindowDays | quote }}
+            {{- if not (quote .Values.opencost.opencost.metrics.kubeStateMetrics.emitPodAnnotations | empty ) }}
+            - name: EMIT_POD_ANNOTATIONS_METRIC
+              value: {{ .Values.opencost.opencost.metrics.kubeStateMetrics.emitPodAnnotations | quote }}
+            {{- end }}
+            {{- if not (quote .Values.opencost.opencost.metrics.kubeStateMetrics.emitNamespaceAnnotations | empty ) }}
+            - name: EMIT_NAMESPACE_ANNOTATIONS_METRIC
+              value: {{ .Values.opencost.opencost.metrics.kubeStateMetrics.emitNamespaceAnnotations | quote }}
+            {{- end }}
+            {{- if not (quote .Values.opencost.opencost.metrics.kubeStateMetrics.emitKsmV1Metrics | empty ) }}
+            - name: EMIT_KSM_V1_METRICS
+              value: {{ .Values.opencost.opencost.metrics.kubeStateMetrics.emitKsmV1Metrics | quote }}
+            {{- end }}
+            {{- if not (quote .Values.opencost.opencost.metrics.kubeStateMetrics.emitKsmV1MetricsOnly | empty ) }}
+            - name: EMIT_KSM_V1_METRICS_ONLY
+              value: {{ .Values.opencost.opencost.metrics.kubeStateMetrics.emitKsmV1MetricsOnly | quote }}
+            {{- end }}
+            # Add any additional provided variables
+            {{- range $key, $value := .Values.opencost.opencost.exporter.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          {{- if or .Values.opencost.plugins.enabled .Values.opencost.opencost.exporter.persistence.enabled .Values.opencost.opencost.exporter.extraVolumeMounts .Values.opencost.opencost.customPricing.enabled .Values.opencost.opencost.cloudIntegrationSecret}}
+          volumeMounts:
+            {{- if .Values.opencost.plugins.enabled }}
+            - mountPath: /opt/opencost/plugin
+              name: plugins-dir
+              readOnly: false
+            {{- range $key, $config := .Values.opencost.plugins.configs }}
+            - mountPath: /opt/opencost/plugin/config/{{$key}}_config.json
+              subPath: {{$key}}_config.json
+              name: plugins-config
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.exporter.persistence.enabled }}
+            - mountPath: /mnt/export
+              name: opencost-export
+              readOnly: false
+            {{- end }}
+            {{- if .Values.opencost.opencost.customPricing.enabled }}
+            - mountPath: {{ .Values.opencost.opencost.customPricing.configPath }}/{{ include "opencost.configFileName" . }}.json
+              name: custom-configs
+              subPath: {{ include "opencost.configFileName" . }}.json
+              readOnly: true
+            {{- end }}
+            {{- if .Values.opencost.opencost.metrics.config.enabled }}
+            - mountPath: {{ .Values.opencost.opencost.customPricing.configPath }}/metrics.json
+              name: custom-metrics
+              subPath: metrics.json
+              readOnly: true
+            {{- end }}
+            {{- if .Values.opencost.opencost.cloudIntegrationSecret }}
+            - name: cloud-integration
+              mountPath: /var/configs/cloud-integration
+            {{- end }}
+            {{- with .Values.opencost.opencost.exporter.extraVolumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+        {{- if .Values.opencost.opencost.ui.enabled }}
+        - name: opencost-ui
+          image: {{ include "opencostUi.fullImageName" .}}
+          imagePullPolicy: {{ .Values.opencost.opencost.ui.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.opencost.opencost.ui.uiPort }}
+              name: http-ui
+          env:
+            {{- with .Values.opencost.opencost.ui.extraEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.ui.apiServer }}
+            - name: API_SERVER
+              value: {{ .Values.opencost.opencost.ui.apiServer | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.exporter.apiPort }}
+            - name: API_PORT
+              value: {{ .Values.opencost.opencost.exporter.apiPort | quote }}
+            {{- end }}
+            {{- if .Values.opencost.opencost.ui.uiPort }}
+            - name: UI_PORT
+              value: {{ .Values.opencost.opencost.ui.uiPort | quote }}
+            {{- end }}
+          resources: {{- toYaml .Values.opencost.opencost.ui.resources | nindent 12 }}
+          {{- if .Values.opencost.opencost.ui.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.opencost.opencost.ui.livenessProbe.path }}
+              port: {{ .Values.opencost.opencost.ui.uiPort }}
+            initialDelaySeconds: {{ .Values.opencost.opencost.ui.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.opencost.opencost.ui.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.opencost.opencost.ui.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.opencost.opencost.ui.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.opencost.opencost.ui.readinessProbe.path }}
+              port: {{ .Values.opencost.opencost.ui.uiPort }}
+            initialDelaySeconds: {{ .Values.opencost.opencost.ui.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.opencost.opencost.ui.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.opencost.opencost.ui.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- with .Values.opencost.opencost.ui.securityContext }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.opencost.opencost.ui.extraVolumeMounts }}
+          volumeMounts: {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- with .Values.opencost.opencost.extraContainers }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if and .Values.opencost.opencost.prometheus.amp.enabled .Values.opencost.opencost.sigV4Proxy }}
+        - name: sigv4proxy
+          image: {{ .Values.opencost.opencost.sigV4Proxy.image }}
+          imagePullPolicy: {{ .Values.opencost.opencost.sigV4Proxy.imagePullPolicy }}
+          args:
+          - --name
+          - {{ .Values.opencost.opencost.sigV4Proxy.name }}
+          - --region
+          - {{ .Values.opencost.opencost.sigV4Proxy.region }}
+          - --host
+          - {{ .Values.opencost.opencost.sigV4Proxy.host }}
+          {{- if .Values.opencost.opencost.sigV4Proxy.role_arn }}
+          - --role-arn
+          - {{ .Values.opencost.opencost.sigV4Proxy.role_arn }}
+          {{- end }}
+          - --port
+          - :{{ .Values.opencost.opencost.sigV4Proxy.port }}
+          ports:
+          - name: aws-sigv4-proxy
+            containerPort: {{ .Values.opencost.opencost.sigV4Proxy.port | int }}
+          {{- with .Values.opencost.opencost.sigV4Proxy.extraEnv }}
+          env:
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.opencost.opencost.sigV4Proxy.resources }}
+          resources:
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.opencost.opencost.sigV4Proxy.securityContext }}
+          securityContext:
+          {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      {{- if or .Values.opencost.plugins.enabled .Values.opencost.opencost.exporter.persistence.enabled .Values.opencost.extraVolumes .Values.opencost.opencost.customPricing.enabled .Values.opencost.opencost.cloudIntegrationSecret}}
+      volumes:
+        {{- if .Values.opencost.plugins.enabled  }}
+        {{- if .Values.opencost.plugins.install.enabled}}
+        - name: install-script
+          configMap:
+            name: {{ template "opencost.fullname" . }}-install-plugins
+        {{- end }}
+        - name: plugins-dir
+          emptyDir: {}
+        - name: plugins-config
+          secret:
+            secretName:  {{ template "opencost.fullname" . }}-plugins-config
+        {{- end }}
+        {{- if .Values.opencost.opencost.customPricing.enabled }}
+        - name: custom-configs
+          configMap:
+            name: {{ .Values.opencost.opencost.customPricing.configmapName }}
+        {{- end }}
+        {{- if .Values.opencost.opencost.metrics.config.enabled }}
+        - name: custom-metrics
+          configMap:
+            name: {{ .Values.opencost.opencost.metrics.config.configmapName }}
+        {{- end }}
+        {{- if .Values.opencost.opencost.exporter.persistence.enabled }}
+        - name: opencost-export
+          persistentVolumeClaim:
+            claimName: {{ include "opencost.fullname" . }}-pvc
+        {{- end }}
+        {{- if .Values.opencost.opencost.cloudIntegrationSecret }}
+        - name: cloud-integration
+          secret:
+            secretName: {{ .Values.opencost.opencost.cloudIntegrationSecret }}
+            items:
+              - key: cloud-integration.json
+                path: cloud-integration.json
+          {{- end }}
+        {{- with .Values.opencost.extraVolumes }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}

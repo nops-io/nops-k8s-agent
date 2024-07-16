@@ -1,0 +1,52 @@
+{{- if .Values.nopsAgent.rightsizing }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}-granular
+spec:
+  schedule: "32 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          activeDeadlineSeconds: {{ .Values.nopsAgent.activeDeadlineSeconds }}
+          {{ if .Values.nopsAgent.serviceAccount.create }}
+          serviceAccountName: nops-k8s-agent
+          {{ else }}
+          serviceAccountName: default
+          {{ end }}
+          containers:
+          - resources:
+              limits:
+                cpu: {{ .Values.nopsAgent.resources.limits.cpu }}
+                memory: {{ .Values.nopsAgent.resources.limits.memory }}
+              requests:
+                cpu: {{ .Values.nopsAgent.resources.requests.cpu }}
+                memory: {{ .Values.nopsAgent.resources.requests.memory }}
+            name: {{ .Chart.Name }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
+              {{- if .Values.nopsAgent.secrets.useAwsCredentials }}
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_access_key_id
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: nops-k8s-agent
+                    key: aws_secret_access_key
+              {{- end }}
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            image: "{{ .Values.nopsAgent.repository }}:{{ .Values.nopsAgent.imageTag }}"
+            imagePullPolicy:  {{ .Values.nopsAgent.imagePullPolicy }}
+            command: ["python", "manage.py", "dumptos3", "--nogroupby"]
+          restartPolicy: Never
+{{ end }}

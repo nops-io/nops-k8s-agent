@@ -1,0 +1,43 @@
+{{- if and .Values.prometheus.kubeStateMetrics.networkPolicy.enabled (eq .Values.prometheus.kubeStateMetrics.networkPolicy.flavor "kubernetes") }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  {{- if .Values.prometheus.kubeStateMetrics.annotations }}
+  annotations:
+    {{ toYaml .Values.prometheus.kubeStateMetrics.annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "kube-state-metrics.labels" . | indent 4 }}
+  name: {{ template "kube-state-metrics.fullname" . }}
+  namespace: {{ template "kube-state-metrics.namespace" . }}
+spec:
+  {{- if .Values.prometheus.kubeStateMetrics.networkPolicy.egress }}
+  ## Deny all egress by default
+  egress:
+    {{- toYaml .Values.prometheus.kubeStateMetrics.networkPolicy.egress | nindent 4 }}
+  {{- end }}
+  ingress:
+  {{- if .Values.prometheus.kubeStateMetrics.networkPolicy.ingress }}
+    {{- toYaml .Values.prometheus.kubeStateMetrics.networkPolicy.ingress | nindent 4 }}
+  {{- else }}
+    ## Allow ingress on default ports by default
+  - ports:
+    - port: {{ .Values.prometheus.kubeStateMetrics.service.port | default 8080 }}
+      protocol: TCP
+    {{- if .Values.prometheus.kubeStateMetrics.selfMonitor.enabled }}
+    {{- $telemetryPort := ternary 9091 (.Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081) .Values.prometheus.kubeStateMetrics.kubeRBACProxy.enabled}}
+    - port: {{ $telemetryPort }}
+      protocol: TCP
+    {{- end }}
+  {{- end }}
+  podSelector:
+    {{- if .Values.prometheus.kubeStateMetrics.networkPolicy.podSelector }}
+    {{- toYaml .Values.prometheus.kubeStateMetrics.networkPolicy.podSelector | nindent 4 }}
+    {{- else }}
+    matchLabels:
+      {{- include "kube-state-metrics.selectorLabels" . | indent 6 }}
+    {{- end }}
+  policyTypes:
+    - Ingress
+    - Egress
+{{- end }}

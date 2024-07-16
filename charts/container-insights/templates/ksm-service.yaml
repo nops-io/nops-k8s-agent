@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "kube-state-metrics.fullname" . }}
+  namespace: {{ template "kube-state-metrics.namespace" . }}
+  labels:
+    {{- include "kube-state-metrics.labels" . | indent 4 }}
+  annotations:
+    {{- if .Values.prometheus.kubeStateMetrics.prometheusScrape }}
+    prometheus.io/scrape: '{{ .Values.prometheus.kubeStateMetrics.prometheusScrape }}'
+    {{- end }}
+    {{- if .Values.prometheus.kubeStateMetrics.service.annotations }}
+    {{- toYaml .Values.prometheus.kubeStateMetrics.service.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  type: "{{ .Values.prometheus.kubeStateMetrics.service.type }}"
+  {{- if .Values.prometheus.kubeStateMetrics.service.ipDualStack.enabled }}
+  ipFamilies: {{ toYaml .Values.prometheus.kubeStateMetrics.service.ipDualStack.ipFamilies | nindent 4 }}
+  ipFamilyPolicy: {{ .Values.prometheus.kubeStateMetrics.service.ipDualStack.ipFamilyPolicy }}
+  {{- end }}
+  ports:
+  - name: "http"
+    protocol: TCP
+    port: {{ .Values.prometheus.kubeStateMetrics.service.port | default 8080}}
+  {{- if .Values.prometheus.kubeStateMetrics.service.nodePort }}
+    nodePort: {{ .Values.prometheus.kubeStateMetrics.service.nodePort }}
+  {{- end }}
+    targetPort: {{ .Values.prometheus.kubeStateMetrics.service.port | default 8080}}
+  {{ if .Values.prometheus.kubeStateMetrics.selfMonitor.enabled }}
+  - name: "metrics"
+    protocol: TCP
+    port: {{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081 }}
+    targetPort: {{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryPort | default 8081 }}
+  {{- if .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryNodePort }}
+    nodePort: {{ .Values.prometheus.kubeStateMetrics.selfMonitor.telemetryNodePort }}
+  {{- end }}
+  {{ end }}
+{{- if .Values.prometheus.kubeStateMetrics.service.loadBalancerIP }}
+  loadBalancerIP: "{{ .Values.prometheus.kubeStateMetrics.service.loadBalancerIP }}"
+{{- end }}
+{{- if .Values.prometheus.kubeStateMetrics.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range $cidr := .Values.prometheus.kubeStateMetrics.service.loadBalancerSourceRanges }}
+    - {{ $cidr }}
+  {{- end }}
+{{- end }}
+{{- if .Values.prometheus.kubeStateMetrics.autosharding.enabled }}
+  clusterIP: None
+{{- else if .Values.prometheus.kubeStateMetrics.service.clusterIP }}
+  clusterIP: "{{ .Values.prometheus.kubeStateMetrics.service.clusterIP }}"
+{{- end }}
+  selector:
+    {{- include "kube-state-metrics.selectorLabels" . | indent 4 }}
