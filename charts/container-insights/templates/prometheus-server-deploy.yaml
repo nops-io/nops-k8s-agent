@@ -117,7 +117,7 @@ spec:
           {{- end }}
         {{- end }}
 
-        - name: {{ template "prometheus.name" . }}-{{ .Values.prometheus.server.name }}
+        - name: {{ .Values.prometheus.server.name }}
           {{- if .Values.prometheus.server.image.digest }}
           image: "{{ .Values.prometheus.server.image.repository }}@{{ .Values.prometheus.server.image.digest }}"
           {{- else }}
