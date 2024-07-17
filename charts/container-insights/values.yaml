@@ -1898,18 +1898,33 @@ prometheus:
   # adds additional scrape configs to prometheus.yml
   # must be a string so you have to add a | after extraScrapeConfigs:
   # example adds prometheus-blackbox-exporter scrape config
-  extraScrapeConfigs: |
-    - job_name: nops-cost
-      honor_labels: true
-      scrape_interval: 1m
-      scrape_timeout: 10s
-      metrics_path: /metrics
-      scheme: http
-      dns_sd_configs:
-      - names:
-        - nops-cost.nops-cost.svc.cluster.local
-        type: 'A'
-        port: 9003
+  ipv6_enabled: false  # Set to true to enable IPv6
+
+  #extraScrapeConfigIpv4: |
+  #  - job_name: nops-cost
+  #    honor_labels: true
+  #    scrape_interval: 1m
+  #    scrape_timeout: 10s
+  #    metrics_path: /metrics
+  #    scheme: http
+  #    dns_sd_configs:
+  #    - names:
+  #      - nops-cost.nops-cost.svc.cluster.local
+  #      type: 'A'
+  #      port: 9003
+  #
+  #extraScrapeConfigIpv6: |
+  #  - job_name: nops-cost
+  #    honor_labels: true
+  #    scrape_interval: 1m
+  #    scrape_timeout: 10s
+  #    metrics_path: /metrics
+  #    scheme: http
+  #    dns_sd_configs:
+  #    - names:
+  #      - nops-cost.nops-cost.svc.cluster.local
+  #      type: 'AAAA'
+  #      port: 9003
     
   # Adds option to add alert_relabel_configs to avoid duplicate alerts in alertmanager
   # useful in H/A prometheus with different external labels but the same alerts

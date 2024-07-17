@@ -64,9 +64,31 @@ data:
 {{ toYaml $value | default "{}" | indent 4 }}
 {{- end }}
 {{- if eq $key "prometheus.yml" -}}
-{{- if $root.Values.prometheus.extraScrapeConfigs }}
-{{ tpl $root.Values.prometheus.extraScrapeConfigs $root | indent 4 }}
-{{- end -}}
+{{- if $root.Values.prometheus.ipv6_enabled }}
+    - job_name: nops-cost
+      honor_labels: true
+      scrape_interval: 1m
+      scrape_timeout: 10s
+      metrics_path: /metrics
+      scheme: http
+      dns_sd_configs:
+      - names:
+        - nops-cost.nops-cost.svc.cluster.local
+        type: 'AAAA'
+        port: 9003
+{{- else }}
+    - job_name: nops-cost
+      honor_labels: true
+      scrape_interval: 1m
+      scrape_timeout: 10s
+      metrics_path: /metrics
+      scheme: http
+      dns_sd_configs:
+      - names:
+        - nops-cost.nops-cost.svc.cluster.local
+        type: 'A'
+        port: 9003
+{{- end }}
 {{- if or ($root.Values.prometheus.alertmanager.enabled) ($root.Values.prometheus.server.alertmanagers) }}
     alerting:
 {{- if $root.Values.prometheus.alertRelabelConfigs }}
