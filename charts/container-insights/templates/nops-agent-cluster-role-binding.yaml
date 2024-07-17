@@ -9,7 +9,7 @@ roleRef:
   name: nops-k8s-agent
 subjects:
   - kind: ServiceAccount
-    name: {{ include "nops-k8s-agent.fullname" . }}
+    name: nops-k8s-agent
     namespace: nops-k8s-agent
 {{ else }}
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,6 +22,6 @@ roleRef:
   name: nops-k8s-agent
 subjects:
   - kind: ServiceAccount
-    name: deafult
+    name: default
     namespace: nops-k8s-agent
 {{ end }}
