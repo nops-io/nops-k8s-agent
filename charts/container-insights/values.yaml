@@ -1461,6 +1461,7 @@ prometheus:
     ## Prometheus data retention period (default if not specified is 15 days)
     ##
     retention: "3d"
+    logLevel: "info"
   
     ## Prometheus' data retention size. Supported units: B, KB, MB, GB, TB, PB, EB.
     ##

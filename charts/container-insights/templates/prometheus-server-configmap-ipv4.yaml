@@ -38,6 +38,7 @@ data:
       tsdb:
 {{ $root.Values.prometheus.server.tsdb | toYaml | indent 8 }}
 {{- end }}
+    log_level: {{ .Values.prometheus.server.logLevel | default "info" }}
 {{- if $root.Values.prometheus.server.exemplars }}
       exemplars:
 {{ $root.Values.prometheus.server.exemplars | toYaml | indent 8 }}
