@@ -25,7 +25,7 @@ This enables the nOps platform to:
 
 This document guides you through the setup and deployment process, ensuring a smooth integration with the nOps platform for enhanced operational efficiency.
 
-## nOps Integration 
+## nOps Integration
 
 Check our <a href="https://help.nops.io/Configure-nOps-Kubernetes-Agent-on-EKS.html">help page</a> to walk you through the integration.
 

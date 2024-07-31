@@ -50,3 +50,39 @@ spec:
             command: ["python", "manage.py", "dumptos3", "--start-date", "", "--end-date", ""]
           restartPolicy: Never
 {{ end }}
+
+{{ if .Values.env_variables.APP_NOPS_ENABLE_POD_RIGHTSIZING }}
+
+---
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ template "nops-k8s-agent.fullname" . }}-rightsizing
+spec:
+  schedule: "{{ .Values.cronjob.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          activeDeadlineSeconds: 1200
+          {{ if .Values.serviceAccount.create }}
+          serviceAccountName: {{ include "nops-k8s-agent.fullname" . }}
+          {{ else }}
+          serviceAccountName: default
+          {{ end }}
+          containers:
+          - name: {{ .Chart.Name }}
+            env:
+              - name: APP_APP_VERSION
+                value: "{{ .Chart.AppVersion }}"
+              - name: APP_CHART_VERSION
+                value: "{{ .Chart.Version }}"
+            envFrom:
+              - configMapRef:
+                  name: {{ .Chart.Name }}-configmap
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy:  {{ .Values.image.pullPolicy }}
+            command: ["python", "manage.py", "rightsize"]
+          restartPolicy: Never
+{{ end }}

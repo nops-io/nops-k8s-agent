@@ -3,6 +3,9 @@
 import os
 import sys
 
+import nops_k8s_agent.management.commands.rightsize
+from nops_k8s_agent.rightsizing import Container
+
 
 def main():
     """Run administrative tasks."""
@@ -19,4 +22,7 @@ def main():
 
 
 if __name__ == "__main__":
+    container = Container()
+    container.init_resources()
+    container.wire(modules=[nops_k8s_agent.management.commands.rightsize])
     main()
